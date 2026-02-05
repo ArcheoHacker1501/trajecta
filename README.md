@@ -58,7 +58,7 @@ If you use Trajecta in your research, please cite:
 
 ## License
 
-See the repository license on GitHub.
+GPL-3.0. See `LICENSE` for details.
 
 ## Acknowledgments
 

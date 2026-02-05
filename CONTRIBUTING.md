@@ -22,4 +22,4 @@ Please include:
 - Add comments only where the logic is non-obvious
 
 ## License
-By contributing, you agree that your contributions will be licensed under the project's license (see the repository license on GitHub).
+By contributing, you agree that your contributions will be licensed under GPL-3.0.

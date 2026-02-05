@@ -5,7 +5,7 @@ Use this list before publishing a new Trajecta release.
 ## Source and Versioning
 - [ ] Update version in `CMakeLists.txt` (`CPACK_PACKAGE_VERSION`)
 - [ ] Update README/INSTALL/USAGE if behavior or requirements changed
-- [ ] Verify repository license and `THIRD_PARTY_NOTICES.md` are accurate
+- [ ] Verify `LICENSE` and `THIRD_PARTY_NOTICES.md` are accurate
 - [ ] Ensure Gunrock submodule is at the intended commit
 
 ## Build and Smoke Test (Windows)
@@ -23,7 +23,7 @@ Use this list before publishing a new Trajecta release.
 ## Packaging
 - [ ] Windows installer: `cpack -G NSIS`
 - [ ] Verify installer runs and launches Trajecta
-- [ ] Confirm installer includes docs (`README.md`, `INSTALL.md`, `USAGE.md`)
+- [ ] Confirm installer includes docs (`README.md`, `INSTALL.md`, `USAGE.md`, `LICENSE`)
 - [ ] Generate SHA256 checksums for release artifacts
 
 ## GitHub Release
