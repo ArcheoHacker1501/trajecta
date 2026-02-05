@@ -4,7 +4,7 @@ This guide explains how to use Trajecta in FETE and LCPA modes.
 
 ## Quick Start
 
-Run the program:
+Run the program using the **x64 native tools command prompt for vs 2022**:
 
 ```bash
 # Windows
@@ -23,7 +23,7 @@ Select mode:
 2. LCPA (Least Cost Path Analysis)
 ```
 
-You can enable verbose output when prompted.
+If you want, you can enable verbose output when prompted. This will print out detailed information about completed processes allowing for advanced debug.
 
 ## Input Data Requirements
 
