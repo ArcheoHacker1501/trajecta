@@ -1,14 +1,14 @@
 # Trajecta
 
-CPU and GPU-accelerated least-cost path analysis on terrain surfaces. 
+CPU and GPU-accelerated least-cost path analysis on terrain surfaces. Be patient, this is a first release and will have bugs and problems. Please, contact me for bug reporting or other problems. 
 
 ## Overview
 
-Trajecta provides two complementary workflows for movement modeling:
-- **FETE** (From-Everywhere-To-Everywhere): accessibility and path density from many sources.
-- **LCPA** (Least-Cost Path Analysis): optimal routes from one origin to multiple destinations.
+Currently, Trajecta provides two complementary workflows for movement modeling:
+- **FETE** (From-Everywhere-To-Everywhere): accessibility and path density from many sources.([D. A. White and S. B. Barber](https://www.sciencedirect.com/science/article/pii/S0305440312001379))
+- **LCPA** (Least-Cost Path Analysis): optimal routes from one origin to multiple destinations ([D. A. White 2015](https://www.cambridge.org/core/journals/advances-in-archaeological-practice/article/basics-of-least-cost-analysis-for-archaeological-applications/DE502C37794C0E200AE7FA6A7529E25E?utm_campaign=shareaholic&utm_medium=copy_link&utm_source=bookmark)).
 
-Both modes use anisotropic cost functions and support cost surface modifiers from polyline shapefiles.
+Both modes use anisotropic cost functions and support cost surface modifiers from polyline shapefiles. Read the instructions for more information on currently implemented functionalities. 
 
 ## Platform Support
 
