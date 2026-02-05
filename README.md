@@ -53,7 +53,7 @@ Optional: run `scripts/check_gdal.ps1` (Windows) or `scripts/check_gdal.sh` (Lin
 If you use Trajecta in your research, please cite:
 
 ```
-[Stefano Aprà](https://isaw.nyu.edu/people/students/stefano-apra) - Institute for the Study of the Ancient World (NYU)
+Stefano Aprà - Institute for the Study of the Ancient World (NYU)
 ```
 
 ## License
