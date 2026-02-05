@@ -1,0 +1,3 @@
+[submodule "external/gunrock"]
+	path = external/gunrock
+	url = https://github.com/gunrock/gunrock

@@ -1,0 +1,87 @@
+# Build directories
+build/
+cmake-build-*/
+out/
+
+# IDE files
+.vs/
+.vscode/
+.claude/
+*.swp
+*.swo
+*~
+
+# Compiled binaries
+*.exe
+*.dll
+*.so
+*.dylib
+*.a
+*.lib
+
+# Object files
+*.obj
+*.o
+*.lo
+
+# CMake cache
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+install_manifest.txt
+
+# Debug files
+*.pdb
+*.ilk
+*.idb
+
+# External dependencies (managed by FetchContent)
+external/*
+!external/gunrock/
+!external/gunrock/**
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+nul
+
+# User-specific files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Output raster files (examples/testing - keep project output dirs clean)
+*.tif
+*.tiff
+*.asc
+*.img
+*.bil
+*.hdr
+
+# Config files with personal paths (users create their own)
+*_config_personal.txt
+
+# Python cache (if any Python scripts are added)
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Jupyter notebooks checkpoints
+.ipynb_checkpoints
+
+# Package files
+*.7z
+*.dmg
+*.gz
+*.iso
+*.jar
+*.rar
+*.tar
+*.zip
