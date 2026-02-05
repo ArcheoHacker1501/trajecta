@@ -22,7 +22,17 @@ if (-not (Test-Path $BuildDir)) {
 Push-Location $BuildDir
 try {
     if (-not $SkipBuild) {
-        cmake .. -DGDAL_ROOT="$GdalRoot" -DCMAKE_CUDA_ARCHITECTURES=$CudaArch
+        if (Test-Path "CMakeCache.txt") {
+            $cache = Get-Content -Raw "CMakeCache.txt"
+            if ($cache -match "CMAKE_CUDA_ARCHITECTURES:.*=\\$CudaArch") {
+                Remove-Item -Force "CMakeCache.txt"
+                if (Test-Path "CMakeFiles") {
+                    Remove-Item -Recurse -Force "CMakeFiles"
+                }
+            }
+        }
+        $archArg = "-DCMAKE_CUDA_ARCHITECTURES=$CudaArch"
+        cmake .. -DGDAL_ROOT="$GdalRoot" $archArg
         cmake --build . --config $Config
     }
 
