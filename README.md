@@ -1,6 +1,6 @@
 # Trajecta
 
-CPU and GPU-accelerated least-cost path analysis on terrain surfaces.
+CPU and GPU-accelerated least-cost path analysis on terrain surfaces. 
 
 ## Overview
 
@@ -53,7 +53,7 @@ Optional: run `scripts/check_gdal.ps1` (Windows) or `scripts/check_gdal.sh` (Lin
 If you use Trajecta in your research, please cite:
 
 ```
-Stefano Aprà (Institute for the Study of the Ancient World - NYU)
+Stefano Aprà ([Institute for the Study of the Ancient World - NYU](https://isaw.nyu.edu/people/students/stefano-apra))
 ```
 
 ## License
@@ -64,4 +64,4 @@ GPL-3.0. See `LICENSE` for details.
 
 - Gunrock GPU graph library
 - GDAL for geospatial data I/O
-- Tobler walking function (White 2015 variant [The Basics of Least Cost Analysis for Archaeological Applications])
+- Tobler walking function ([White 2015 variant](https://www.cambridge.org/core/journals/advances-in-archaeological-practice/article/basics-of-least-cost-analysis-for-archaeological-applications/DE502C37794C0E200AE7FA6A7529E25E?utm_campaign=shareaholic&utm_medium=copy_link&utm_source=bookmark))
