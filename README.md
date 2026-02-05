@@ -1,6 +1,6 @@
 # Trajecta
 
-Trajecta is a user-friendly, CPU and GPU-accelerated least-cost path analysis on terrain surfaces specifically developed to be used in Digital Humanities and by users with only a basic computer science background. Be patient, this is a first release and will have bugs and problems. Please, contact me for bug reporting, problems during the installation or additional features you would like to see developed and included in future releases. 
+Trajecta is a user-friendly, CPU and GPU-accelerated least-cost path analysis on terrain surfaces specifically developed to be used in Digital Humanities and by users with only a basic computer science background. Be patient, this is a first release and will have bugs and problems. **Be patient, this is a initial release, it can contain bugs or errors**. Please, contact me for bug reporting, problems during the installation or additional features you would like to see developed and included in future releases. 
 
 ## Overview
 
