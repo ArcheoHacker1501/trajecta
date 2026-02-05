@@ -1,9 +1,6 @@
 # Trajecta Installation Guide
 
-This guide covers prerequisites, build steps, and packaging with NSIS.
-
-First of all, go to the GitHub page where you downloaded this and go to 'Release'. 
-Download the installer (trajecta-x.x.x-exe). 
+This guide covers prerequisites, build steps, and packaging with NSIS. 
 
 ## Prerequisites
 
