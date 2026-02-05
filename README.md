@@ -1,6 +1,6 @@
 # Trajecta
 
-GPU-accelerated least-cost path analysis on terrain surfaces.
+CPU and GPU-accelerated least-cost path analysis on terrain surfaces.
 
 ## Overview
 
@@ -58,7 +58,7 @@ If you use Trajecta in your research, please cite:
 
 ## License
 
-GPL-3.0. See `LICENSE` for details.
+See the repository license on GitHub.
 
 ## Acknowledgments
 
