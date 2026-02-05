@@ -64,4 +64,4 @@ GPL-3.0. See `LICENSE` for details.
 
 - Gunrock GPU graph library
 - GDAL for geospatial data I/O
-- Tobler walking function (White 2015 variant)
+- Tobler walking function (White 2015 variant [The Basics of Least Cost Analysis for Archaeological Applications])
