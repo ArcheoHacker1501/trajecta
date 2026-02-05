@@ -4,7 +4,7 @@ This guide explains how to use Trajecta in FETE and LCPA modes.
 
 ## Quick Start
 
-Run the program using the **x64 native tools command prompt for vs 2022**:
+Run the program using the **x64 native tools command prompt for vs 20xx**:
 
 ```bash
 # Windows
