@@ -4,17 +4,7 @@ This guide explains how to use Trajecta in FETE and LCPA modes.
 
 ## Quick Start
 
-Run the program using the **x64 native tools command prompt for vs 20xx**:
-
-```bash
-# Windows
-cd build/Release
-trajecta.exe
-
-# Linux
-cd build
-./trajecta
-```
+Launch trajecta.exe and wait for the program to start. A prompt window will open.
 
 On start, choose the analysis mode:
 ```
