@@ -1,4 +1,4 @@
-# TRAJECTA — Installation Guide
+# Trajecta — Installation Guide
 
 This guide will walk you through the complete installation of **Trajecta** step by step. No technical background is required — just follow the instructions carefully and you will be ready to go.
 
