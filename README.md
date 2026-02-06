@@ -28,15 +28,18 @@ Windows uses **OSGeo4W** for GDAL. Linux uses system packages. macOS is not supp
 
 ## Quick Start
 
-1. Follow the installation guide: `INSTALL.md`
-2. Build the project with CMake
-3. Run the executable from the build output
+Choose one of the following:
+
+1. Follow instructions in `USER_FRIENDLY_INSTALL.md` for a user-firendly installation of Trajecta through the Trajecta installer (RECOMMENDED FOR MOST USERS).
+
+2. Follow instruction in `ADVANCED_INSTALL.md` to get access to the source code and be able to modify it. 
 
 Optional: run `scripts/check_gdal.ps1` (Windows) or `scripts/check_gdal.sh` (Linux) to validate GDAL.
 
 ## Documentation
 
-- `INSTALL.md` - Installation and build instructions
+- `USER_FRIENDLY_INSTALL.md` - User-firendly installation instructions
+- `ADVANCED_INSTALL.md` - Advanced instalation instructions
 - `USAGE.md` - Detailed usage guide
 - `CONTRIBUTING.md` - Contributing guidelines
 - `THIRD_PARTY_NOTICES.md` - Third-party licenses
