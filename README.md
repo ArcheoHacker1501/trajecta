@@ -40,8 +40,6 @@ Optional: run `scripts/check_gdal.ps1` (Windows) or `scripts/check_gdal.sh` (Lin
 - `USAGE.md` - Detailed usage guide
 - `CONTRIBUTING.md` - Contributing guidelines
 - `THIRD_PARTY_NOTICES.md` - Third-party licenses
-- `RELEASE_CHECKLIST.md` - Steps to prepare a release
-- `RELEASE_NOTES_TEMPLATE.md` - Release notes template
 
 ## Release (Maintainers)
 
