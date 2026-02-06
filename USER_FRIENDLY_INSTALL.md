@@ -6,7 +6,7 @@ This guide will walk you through the complete installation of **Trajecta** step 
 
 ## Step 1 — Download and Install Trajecta
 
-1. Go to the [Trajecta GitHub page](https://github.com/yourusername/Trajecta) and navigate to the **Releases** section (on the right side of the page).
+1. Go to the [Trajecta GitHub page](https://github.com/ArcheoHacker1501/trajecta) and navigate to the **Releases** section (on the right side of the page).
 2. Download the installer file. It will be named something like `trajecta-vx.x.x.exe` (where `x.x.x` is the version number).
 3. Run the installer by double-clicking on it.
 4. Follow the on-screen instructions and complete the installation.
