@@ -2,6 +2,15 @@
 
 Trajecta is a user-friendly least-cost analysis tool specifically developed to be used in Digital Humanities and by users with only a basic computer science background. **Be patient, this is a initial release, it can contain bugs or errors**. Please, contact me for bug reporting, problems during the installation or additional features you would like to see developed and included in future releases. 
 
+## Available Versions
+
+### Release (Installer)
+- v0.1.0
+
+### Source Code
+- v0.1.1
+- v0.1.0
+
 ## Overview
 
 Currently, Trajecta provides two complementary workflows for movement modeling:
