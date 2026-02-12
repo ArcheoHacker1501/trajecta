@@ -5,6 +5,7 @@ Trajecta is a user-friendly least-cost analysis tool specifically developed to b
 ## Available Versions
 
 ### Release (Installer)
+- v0.1.1
 - v0.1.0
 
 ### Source Code
