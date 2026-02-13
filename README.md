@@ -20,7 +20,7 @@ Currently, Trajecta provides two complementary workflows for movement modeling:
 
 Both modes use anisotropic cost functions and support cost surface modifiers from polyline shapefiles. Read the instructions for more information on currently implemented functionalities. 
 
-## Platform Support
+## Currently supported Platform
 
 - **Windows 10/11**: Supported (CPU and GPU)
 - **Linux**: Experimental (CPU and GPU with CUDA). Some Windows-specific code paths still need portability updates.
