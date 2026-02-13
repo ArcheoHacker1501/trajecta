@@ -24,7 +24,7 @@ Both modes use anisotropic cost functions and support cost surface modifiers fro
 
 - **Windows 10/11**: Supported (CPU and GPU)
 - **Linux**: Experimental (CPU and GPU with CUDA). Some Windows-specific code paths still need portability updates.
-- **macOS**: Not currently supported (CUDA not available and Windows-specific code paths). CPU-only port is planned.
+- **macOS**: CURRENTLY NOT SUPPORTED
 
 ## Requirements
 
