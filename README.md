@@ -1,6 +1,6 @@
 # Overview
 
-To install the latest version of Trajecta (v1.0.0) [download the installer] (https://github.com/ArcheoHacker1501/trajecta/releases/tag/v1.0.0) and click on it!
+To install the latest version of Trajecta (v1.0.0) **[download the installer](https://github.com/ArcheoHacker1501/trajecta/releases/tag/v1.0.0) and click on it**!
 
 Trajecta is a least-cost analysis software specifically developed for users with only a basic computer science background. **Be patient, this software is currently under development and can contain bugs or errors**. Please, contact me for bug reporting, problems during the installation, improvements or additional features you would like to see developed and included in future releases.
 
