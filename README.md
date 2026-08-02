@@ -85,18 +85,6 @@ Modifiers let you make specific features (water bodies, restricted areas, specif
 
 The Trajecta engine relies on the **GDAL** geospatial libraries, installed through [OSGeo4W](https://trac.osgeo.org/osgeo4w). Trajecta Studio finds a standard OSGeo4W installation (C:\OSGeo4W or C:\OSGeo4W64) automatically — no manual PATH configuration is needed. If GDAL lives elsewhere, use **Locate GDAL folder** in the sidebar and select your `OSGeo4W\bin` directory. The status is shown at the bottom of the sidebar.
 
-## References
-
-Irmischer, I. J., & Clarke, K. C. (2017). Measuring and modeling the speed of human navigation. *Cartography and Geographic Information Science*, 45(2), 177–186. [doi:10.1080/15230406.2017.1292150](https://doi.org/10.1080/15230406.2017.1292150)
-
-Márquez-Pérez, J., Vallejo-Villalta, I., & Álvarez-Francoso, J. I. (2017). Estimated travel time for walking trails in natural areas. *Geografisk Tidsskrift–Danish Journal of Geography*, 117(1), 53–62. [doi:10.1080/00167223.2017.1316212](https://doi.org/10.1080/00167223.2017.1316212)
-
-Park, S. W., Linsen, L., Kreylos, O., Owens, J. D., & Hamann, B. (2006). Discrete Sibson interpolation. *IEEE Transactions on Visualization and Computer Graphics*, 12(2), 243–253. [doi:10.1109/TVCG.2006.27](https://doi.org/10.1109/TVCG.2006.27)
-
-White, D. A. (2015). The Basics of Least Cost Analysis for Archaeological Applications. *Advances in Archaeological Practice*, 3(4), 407–414. [doi:10.7183/2326-3768.3.4.407](https://doi.org/10.7183/2326-3768.3.4.407)
-
-White, D. A., & Barber, S. B. (2012). Geospatial modeling of pedestrian transportation networks: A case study from precolumbian Oaxaca, Mexico. *Journal of Archaeological Science*, 39(8), 2684–2696. [doi:10.1016/j.jas.2012.04.017](https://doi.org/10.1016/j.jas.2012.04.017)
-
 ## Currently supported Platforms
 
 - **Windows 10/11**: Supported (CPU only)
@@ -119,3 +107,15 @@ GPL-3.0. See `LICENSE` for details.
 
 - GDAL for managing geospatial data I/O
 - Qt6 for the Trajecta Studio graphical interface
+
+## References
+
+Irmischer, I. J., & Clarke, K. C. (2017). Measuring and modeling the speed of human navigation. *Cartography and Geographic Information Science*, 45(2), 177–186. [doi:10.1080/15230406.2017.1292150](https://doi.org/10.1080/15230406.2017.1292150)
+
+Márquez-Pérez, J., Vallejo-Villalta, I., & Álvarez-Francoso, J. I. (2017). Estimated travel time for walking trails in natural areas. *Geografisk Tidsskrift–Danish Journal of Geography*, 117(1), 53–62. [doi:10.1080/00167223.2017.1316212](https://doi.org/10.1080/00167223.2017.1316212)
+
+Park, S. W., Linsen, L., Kreylos, O., Owens, J. D., & Hamann, B. (2006). Discrete Sibson interpolation. *IEEE Transactions on Visualization and Computer Graphics*, 12(2), 243–253. [doi:10.1109/TVCG.2006.27](https://doi.org/10.1109/TVCG.2006.27)
+
+White, D. A. (2015). The Basics of Least Cost Analysis for Archaeological Applications. *Advances in Archaeological Practice*, 3(4), 407–414. [doi:10.7183/2326-3768.3.4.407](https://doi.org/10.7183/2326-3768.3.4.407)
+
+White, D. A., & Barber, S. B. (2012). Geospatial modeling of pedestrian transportation networks: A case study from precolumbian Oaxaca, Mexico. *Journal of Archaeological Science*, 39(8), 2684–2696. [doi:10.1016/j.jas.2012.04.017](https://doi.org/10.1016/j.jas.2012.04.017)
