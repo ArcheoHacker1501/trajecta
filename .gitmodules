@@ -1,3 +1,0 @@
-[submodule "external/gunrock"]
-	path = external/gunrock
-	url = https://github.com/ArcheoHacker1501/gunrock.git

@@ -1,10 +1,9 @@
 cmake_minimum_required(VERSION 3.24)
-project(trajecta LANGUAGES CXX CUDA)
+project(trajecta LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-option(TRAJECTA_FETCH_GUNROCK "Download Gunrock if not found" ON)
 option(TRAJECTA_COPY_GDAL_RUNTIME "Copy GDAL runtime DLLs next to the executable (Windows)" ON)
 
 # OpenMP
@@ -37,43 +36,17 @@ endif()
 message(STATUS "GDAL Include: ${GDAL_INCLUDE_DIRS}")
 message(STATUS "GDAL Library: ${GDAL_LIBRARIES}")
 
-# Gunrock
-set(GUNROCK_ROOT "${CMAKE_SOURCE_DIR}/external/gunrock" CACHE PATH "Path to Gunrock installation")
-if (EXISTS "${GUNROCK_ROOT}/include")
-  message(STATUS "Gunrock found: ${GUNROCK_ROOT}")
-  set(GUNROCK_INCLUDE_DIR "${GUNROCK_ROOT}/include")
-else()
-  if (TRAJECTA_FETCH_GUNROCK)
-    include(FetchContent)
-    FetchContent_Declare(
-      gunrock
-      GIT_REPOSITORY https://github.com/gunrock/gunrock.git
-      GIT_TAG v1.0.0
-    )
-    FetchContent_MakeAvailable(gunrock)
-    set(GUNROCK_INCLUDE_DIR "${gunrock_SOURCE_DIR}/include")
-    message(STATUS "Gunrock downloaded: ${gunrock_SOURCE_DIR}")
-  else()
-    message(WARNING "Gunrock not found at ${GUNROCK_ROOT} - GPU functionality will be limited")
-  endif()
-endif()
-
 # Executable
 add_executable(trajecta
-  src/main_fete.cu
-  src/main_lcpa.cu
-  src/main_fete_gpu.cu
+  src/main_fete.cpp
+  src/main_lcpa.cpp
+  src/main_interp.cpp
 )
 
 # Includes
 target_include_directories(trajecta PRIVATE
-  include
   ${GDAL_INCLUDE_DIRS}
 )
-
-if (GUNROCK_INCLUDE_DIR)
-  target_include_directories(trajecta PRIVATE ${GUNROCK_INCLUDE_DIR})
-endif()
 
 # Link libraries
 target_link_libraries(trajecta PRIVATE ${GDAL_LIBRARIES})
@@ -81,34 +54,17 @@ if (OpenMP_CXX_FOUND)
   target_link_libraries(trajecta PRIVATE OpenMP::OpenMP_CXX)
 endif()
 
-# CUDA compile options
+# Compile options
 if (MSVC)
   target_compile_options(trajecta PRIVATE
-    $<$<COMPILE_LANGUAGE:CUDA>:--expt-extended-lambda>
-    $<$<COMPILE_LANGUAGE:CUDA>:--expt-relaxed-constexpr>
-    $<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=/openmp,/Zc:preprocessor>
     $<$<COMPILE_LANGUAGE:CXX>:/openmp>
     $<$<COMPILE_LANGUAGE:CXX>:/Zc:preprocessor>
-  )
-else()
-  target_compile_options(trajecta PRIVATE
-    $<$<COMPILE_LANGUAGE:CUDA>:--expt-extended-lambda>
-    $<$<COMPILE_LANGUAGE:CUDA>:--expt-relaxed-constexpr>
+    $<$<COMPILE_LANGUAGE:CXX>:/Zc:__cplusplus>
   )
 endif()
 
-# Default CUDA architecture
-if (NOT CMAKE_CUDA_ARCHITECTURES)
-  set(CMAKE_CUDA_ARCHITECTURES 86 CACHE STRING "CUDA architectures" FORCE)
-endif()
-message(STATUS "CUDA Architectures: ${CMAKE_CUDA_ARCHITECTURES}")
-
-# Definitions
-target_compile_definitions(trajecta PRIVATE
-  __HIP_PLATFORM_NVIDIA__
-  ESSENTIALS_NVIDIA_BACKEND=1
-  SM_TARGET=${CMAKE_CUDA_ARCHITECTURES}
-)
+# NOMINMAX prevents windows.h from defining min/max macros that break STL templates
+target_compile_definitions(trajecta PRIVATE NOMINMAX)
 
 # Optional: copy GDAL runtime next to the executable (Windows)
 if (WIN32 AND TRAJECTA_COPY_GDAL_RUNTIME)
@@ -120,21 +76,141 @@ endif()
 
 # Install rules
 install(TARGETS trajecta RUNTIME DESTINATION .)
-install(FILES README.md INSTALL.md USAGE.md LICENSE THIRD_PARTY_NOTICES.md CONTRIBUTING.md DESTINATION .)
+install(FILES README.md LICENSE THIRD_PARTY_NOTICES.md DESTINATION .)
+
+# ---------------------------------------------------------------------------
+# Self-contained GDAL runtime
+#
+# trajecta.exe imports gdal312.dll by name, so "install GDAL" was not a
+# sufficient instruction: it had to be *that* version. Anyone with, say, QGIS
+# 3.34 (which ships gdal308.dll) got a missing-DLL error despite following the
+# guide. The runtime is therefore shipped with the application, which also
+# removes the C++ runtime dependency and pins the PROJ database to a known-good
+# copy instead of whichever one happens to be first on PATH.
+#
+# The dependency closure is resolved by CMake rather than listed by hand: a
+# hardcoded list silently rots the first time GDAL changes what it links
+# against, and this one is ~50 entries deep.
+# ---------------------------------------------------------------------------
+option(TRAJECTA_BUNDLE_GDAL "Ship the GDAL runtime inside the package" ON)
+
+# Where to take the runtime from. QGIS carries a current proj.db; OSGeo4W64's
+# own copy is years older than its DLLs and makes PROJ fail to identify a CRS.
+set(TRAJECTA_RUNTIME_DIR "C:/Program Files/QGIS 3.44.10" CACHE PATH
+    "Installation providing gdal312.dll, its dependencies and share/{proj,gdal}")
+
+if (WIN32 AND TRAJECTA_BUNDLE_GDAL)
+  if (NOT EXISTS "${TRAJECTA_RUNTIME_DIR}/bin/gdal312.dll")
+    message(FATAL_ERROR
+      "TRAJECTA_RUNTIME_DIR does not contain bin/gdal312.dll: ${TRAJECTA_RUNTIME_DIR}\n"
+      "Point it at a GDAL 3.12 installation, or configure with "
+      "-DTRAJECTA_BUNDLE_GDAL=OFF to keep depending on an external GDAL.")
+  endif()
+  if (NOT EXISTS "${TRAJECTA_RUNTIME_DIR}/share/proj/proj.db")
+    message(FATAL_ERROR
+      "TRAJECTA_RUNTIME_DIR has no share/proj/proj.db: ${TRAJECTA_RUNTIME_DIR}")
+  endif()
+
+  install(CODE "
+    set(_bin \"${TRAJECTA_RUNTIME_DIR}/bin\")
+    file(GET_RUNTIME_DEPENDENCIES
+      EXECUTABLES \"\$<TARGET_FILE:trajecta>\"
+      RESOLVED_DEPENDENCIES_VAR _resolved
+      UNRESOLVED_DEPENDENCIES_VAR _unresolved
+      DIRECTORIES \"\${_bin}\"
+      # Everything under System32 belongs to Windows and must not be copied;
+      # api-ms-win-* are the Universal CRT, present since Windows 10.
+      PRE_EXCLUDE_REGEXES \"^api-ms-\" \"^ext-ms-\"
+      POST_EXCLUDE_REGEXES \"[Ss]ystem32\"
+    )
+    list(LENGTH _resolved _n)
+    message(STATUS \"Bundling \${_n} runtime libraries from \${_bin}\")
+    foreach(_lib IN LISTS _resolved)
+      file(INSTALL DESTINATION \"\${CMAKE_INSTALL_PREFIX}\"
+           TYPE SHARED_LIBRARY FOLLOW_SYMLINK_CHAIN FILES \"\${_lib}\")
+    endforeach()
+    # The MSVC redistributable is excluded above because it lives in System32;
+    # Microsoft's Distributable Code terms allow shipping it with the app, and
+    # doing so is what makes the package work on a machine without it.
+    foreach(_rt MSVCP140.dll VCRUNTIME140.dll VCRUNTIME140_1.dll VCOMP140.DLL)
+      if (EXISTS \"C:/Windows/System32/\${_rt}\")
+        file(INSTALL DESTINATION \"\${CMAKE_INSTALL_PREFIX}\"
+             TYPE SHARED_LIBRARY FILES \"C:/Windows/System32/\${_rt}\")
+      endif()
+    endforeach()
+    if (_unresolved)
+      message(WARNING \"Unresolved runtime dependencies: \${_unresolved}\")
+    endif()
+  ")
+
+  # Data directories. PROJ without proj.db cannot identify a CRS; the engine
+  # points at these itself (use_bundled_gdal_data in main_fete.cpp).
+  #
+  # The layout differs between distributions: OSGeo4W keeps GDAL's data under
+  # share/gdal, QGIS under apps/gdal/share/gdal. Probe rather than assume.
+  set(_gdal_data "")
+  foreach(_cand "share/gdal" "apps/gdal/share/gdal")
+    if (EXISTS "${TRAJECTA_RUNTIME_DIR}/${_cand}/gdalicon.png"
+        OR EXISTS "${TRAJECTA_RUNTIME_DIR}/${_cand}/gdalvrt.xsd")
+      set(_gdal_data "${TRAJECTA_RUNTIME_DIR}/${_cand}")
+      break()
+    endif()
+  endforeach()
+  if (NOT _gdal_data)
+    message(FATAL_ERROR
+      "Could not find GDAL's data directory under ${TRAJECTA_RUNTIME_DIR} "
+      "(looked in share/gdal and apps/gdal/share/gdal).")
+  endif()
+  message(STATUS "GDAL data: ${_gdal_data}")
+
+  install(DIRECTORY "${TRAJECTA_RUNTIME_DIR}/share/proj/" DESTINATION share/proj)
+  install(DIRECTORY "${_gdal_data}/" DESTINATION share/gdal)
+endif()
+
+# Optional: bundle a pre-built, windeployqt-deployed Trajecta Studio folder
+# (the graphical interface). scripts/release.ps1 builds the GUI and passes
+# this path automatically; see gui/TrajectaStudio/README.md.
+set(TRAJECTA_GUI_DIR "" CACHE PATH
+    "Deployed Trajecta Studio folder to bundle into the package")
+if (WIN32 AND TRAJECTA_GUI_DIR)
+  if (NOT EXISTS "${TRAJECTA_GUI_DIR}/TrajectaStudio.exe")
+    message(FATAL_ERROR "TRAJECTA_GUI_DIR does not contain TrajectaStudio.exe: ${TRAJECTA_GUI_DIR}")
+  endif()
+  install(DIRECTORY "${TRAJECTA_GUI_DIR}/" DESTINATION .)
+endif()
 
 # CPack (NSIS on Windows, TGZ/ZIP on other platforms)
 set(CPACK_PACKAGE_NAME "Trajecta")
 set(CPACK_PACKAGE_VENDOR "Trajecta")
-set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "GPU-accelerated least-cost path analysis")
-set(CPACK_PACKAGE_VERSION "0.1.0")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Least-cost path analysis for spatial movement modeling")
+set(CPACK_PACKAGE_VERSION "1.0.0")
 set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/LICENSE")
 set(CPACK_PACKAGE_FILE_NAME "Trajecta-${CPACK_PACKAGE_VERSION}")
 
 if (WIN32)
   set(CPACK_GENERATOR "NSIS")
-  set(CPACK_NSIS_DISPLAY_NAME "Trajecta")
-  set(CPACK_NSIS_PACKAGE_NAME "Trajecta")
+  # Version in the visible names, so the user can tell at a glance which build
+  # they have: the Add/Remove Programs entry and the Start Menu group. The
+  # install directory deliberately stays plain "Trajecta" so an upgrade
+  # replaces the previous version instead of accumulating folders.
+  set(CPACK_NSIS_DISPLAY_NAME "Trajecta ${CPACK_PACKAGE_VERSION}")
+  set(CPACK_NSIS_PACKAGE_NAME "Trajecta ${CPACK_PACKAGE_VERSION}")
+  set(CPACK_PACKAGE_INSTALL_DIRECTORY "Trajecta")
   set(CPACK_NSIS_MODIFY_PATH OFF)
+  set(CPACK_NSIS_MUI_ICON "${CMAKE_SOURCE_DIR}/gui/TrajectaStudio/assets/trajecta.ico")
+  set(CPACK_NSIS_MUI_UNIICON "${CMAKE_SOURCE_DIR}/gui/TrajectaStudio/assets/trajecta.ico")
+  if (TRAJECTA_GUI_DIR)
+    # Start Menu and Desktop shortcuts for the graphical interface, and offer
+    # to launch it when the installer finishes. Executables live in the
+    # install root (not the default "bin"), hence EXECUTABLES_DIRECTORY.
+    # Label under the desktop and Start Menu icons.
+    set(CPACK_PACKAGE_EXECUTABLES
+        "TrajectaStudio" "Trajecta Studio ${CPACK_PACKAGE_VERSION}")
+    set(CPACK_CREATE_DESKTOP_LINKS "TrajectaStudio")
+    set(CPACK_NSIS_EXECUTABLES_DIRECTORY ".")
+    set(CPACK_NSIS_INSTALLED_ICON_NAME "TrajectaStudio.exe")
+    set(CPACK_NSIS_MUI_FINISHPAGE_RUN "TrajectaStudio.exe")
+  endif()
 else()
   set(CPACK_GENERATOR "TGZ")
 endif()

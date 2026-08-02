@@ -1,0 +1,16 @@
+<RCC>
+    <qresource prefix="/">
+        <file>theme.qss</file>
+        <file>assets/logo.png</file>
+        <file>assets/arrow_up.svg</file>
+        <file>assets/arrow_down.svg</file>
+        <file>assets/trajecta.ico</file>
+        <file>assets/background/japanese_art.jpg</file>
+        <file>assets/guide/Grid_FETE.jpg</file>
+        <file>assets/guide/unfiltered_FETE.jpg</file>
+        <file>assets/guide/filtered_FETE.jpg</file>
+        <file>assets/guide/LCPA.jpg</file>
+        <file>assets/guide/FETE_density.jpg</file>
+        <file>assets/guide/FETE_density_NNI.jpg</file>
+    </qresource>
+</RCC>

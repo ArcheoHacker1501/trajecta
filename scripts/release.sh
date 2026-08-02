@@ -2,16 +2,14 @@
 set -euo pipefail
 
 BUILD_DIR="${BUILD_DIR:-build}"
-CUDA_ARCH="${CUDA_ARCH:-86}"
 
 echo "Trajecta release (Linux)"
 echo "BUILD_DIR: $BUILD_DIR"
-echo "CUDA_ARCH: $CUDA_ARCH"
 
 mkdir -p "$BUILD_DIR"
 cd "$BUILD_DIR"
 
-cmake .. -DCMAKE_CUDA_ARCHITECTURES="$CUDA_ARCH"
+cmake ..
 cmake --build .
 
 cpack -G TGZ

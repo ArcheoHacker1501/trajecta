@@ -1,0 +1,852 @@
+QMainWindow, QWidget {
+    background-color: #14171c;
+    color: #e4e7ec;
+    font-size: 14px;
+}
+
+QToolTip {
+    background-color: #22272f;
+    color: #e4e7ec;
+    border: 1px solid #333a44;
+    border-radius: 6px;
+    padding: 6px 9px;
+}
+
+/* ---------- Top bar (brand + tabs) ---------- */
+
+QFrame#TopBar {
+    background-color: #1a1e24;
+    border: none;
+    border-bottom: 1px solid #262b33;
+}
+
+QFrame#TopBar QLabel {
+    background: transparent;
+}
+
+QLabel#TopBarTitle {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    color: #eef1f5;
+}
+
+QLabel#TopBarVersion {
+    color: #69717b;
+    font-size: 12px;
+    letter-spacing: 1px;
+    padding-top: 3px;
+}
+
+/* Horizontal navigation tabs */
+QPushButton#TabButton {
+    background: transparent;
+    border: none;
+    border-radius: 8px;
+    padding: 9px 22px;
+    font-size: 14px;
+    color: #99a1ac;
+}
+
+QPushButton#TabButton:hover {
+    background-color: #22272f;
+    color: #e4e7ec;
+}
+
+QPushButton#TabButton:checked {
+    background-color: #1e2a28;
+    color: #a8d0c8;
+}
+
+/* ---------- Bottom status bar ---------- */
+
+QFrame#StatusBar {
+    background-color: #1a1e24;
+    border: none;
+    border-top: 1px solid #262b33;
+}
+
+QFrame#StatusBar QLabel {
+    background: transparent;
+    font-size: 12px;
+}
+
+QLabel#EnvStatus {
+    font-size: 13px;   /* matches LinkButton, on the same status bar row */
+    padding: 0 2px;
+}
+
+QLabel#StatusDivider {
+    color: #333a44;
+}
+
+QPushButton#LinkButton {
+    background: transparent;
+    border: none;
+    color: #7ea8a0;
+    text-align: left;
+    padding: 3px 6px;
+    font-size: 13px;
+}
+
+QPushButton#LinkButton:hover {
+    color: #93bcb3;
+    text-decoration: underline;
+}
+
+/* ---------- Cards ---------- */
+
+QFrame#Card {
+    background-color: #1b1f26;
+    border: 1px solid #282d36;
+    border-radius: 12px;
+}
+
+QFrame#Card QWidget {
+    background-color: transparent;
+}
+
+QLabel#CardTitle {
+    font-size: 15px;
+    font-weight: 700;
+    color: #eef1f5;
+}
+
+QLabel#CardSubtitle {
+    color: #99a1ac;
+    font-size: 13px;
+}
+
+QLabel#FieldLabel {
+    color: #b6bec9;
+    font-size: 13px;
+    min-width: 120px;
+}
+
+QLabel#FieldLabel:disabled {
+    color: #5c646e;
+}
+
+QLabel#HelpDot {
+    color: #8a929d;
+    background-color: #22272f;
+    border: 1px solid #3a414b;
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+QLabel#HelpDot:hover {
+    color: #d7e6e2;
+    border-color: #7ea8a0;
+}
+
+QLabel#HelpDot:disabled {
+    color: #4a525c;
+    border-color: #2a2f38;
+}
+
+QLabel#HintLabel {
+    color: #79818c;
+    font-size: 12px;
+}
+
+/* ---------- Mode cards ---------- */
+
+QPushButton#ModeCard {
+    background-color: #171b21;
+    border: 1px solid #2a2f38;
+    border-radius: 12px;
+    padding: 12px 16px;
+    text-align: center;
+    font-size: 15px;
+    color: #b6bec9;
+}
+
+QPushButton#ModeCard:hover {
+    border-color: #3a414b;
+    background-color: #1c2128;
+    color: #e4e7ec;
+}
+
+QPushButton#ModeCard:checked {
+    border-color: #7ea8a0;
+    background-color: #1e2a28;
+    color: #d7e6e2;
+}
+
+/* ---------- Inputs ---------- */
+
+QLineEdit, QSpinBox, QDoubleSpinBox, QComboBox {
+    background-color: #0f1216;
+    border: 1px solid #2a2f38;
+    border-radius: 8px;
+    padding: 7px 9px;
+    selection-background-color: #7ea8a0;
+    selection-color: #12211e;
+    color: #e4e7ec;
+}
+
+QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus, QComboBox:focus {
+    border-color: #7ea8a0;
+}
+
+QLineEdit:disabled, QSpinBox:disabled, QDoubleSpinBox:disabled, QComboBox:disabled {
+    color: #5c646e;
+    border-color: #21262e;
+}
+
+/* The arrow is painted by SmoothComboBox so it can rotate; the style must not
+   draw its own on top. The drop-down zone stays, to keep the text clear of it
+   (its width matches kArrowZoneWidth in smoothcombobox.cpp). */
+QComboBox::drop-down {
+    border: none;
+    width: 26px;
+}
+
+QComboBox::down-arrow {
+    image: none;
+    width: 0;
+    height: 0;
+}
+
+/* The breathing room goes on the items, never on the view: Qt sizes the popup
+   as (row height x row count) and does not know about padding applied to the
+   list itself, so padding here makes the last row clipped and puts a scroller
+   under a list that would otherwise fit. On ::item it is part of the row
+   height, and the arithmetic comes out right. */
+QComboBox QAbstractItemView {
+    background-color: #1b1f26;
+    border: 1px solid #2a2f38;
+    border-radius: 8px;
+    selection-background-color: #1e2a28;
+    selection-color: #d7e6e2;
+    outline: none;
+    padding: 0;
+}
+
+/* No margin here to inset the highlight: Qt ignores margin on ::item for item
+   views, so it would be a rule that reads as if it did something. The rounded
+   silhouette comes from the mask applied in SmoothComboBox::showPopup(), which
+   clips the highlight at the corners too. */
+QComboBox QAbstractItemView::item {
+    padding: 6px 10px;
+    border: none;
+    min-height: 20px;
+}
+
+/* :selected covers the lists whose view moves the highlight with the mouse;
+   :hover covers any that draw a separate hover state. Both get the same teal,
+   so no list can end up highlighting in the style's own colour. */
+QComboBox QAbstractItemView::item:selected,
+QComboBox QAbstractItemView::item:hover {
+    background-color: #1e2a28;
+    color: #d7e6e2;
+}
+
+/* A list long enough to scroll (only the Viewer's layer list, which is capped)
+   gets stepper buttons: the arrow the style draws in them is the visible cue
+   that there is more below. The app-wide scrollbar rule removes those buttons,
+   so they have to be given a height back here. */
+QComboBox QAbstractItemView QScrollBar:vertical {
+    background: transparent;
+    width: 14px;
+    margin: 0;
+}
+
+QComboBox QAbstractItemView QScrollBar::handle:vertical {
+    background: #3a414b;
+    border-radius: 3px;
+    min-height: 24px;
+    margin: 0 4px;
+}
+
+QComboBox QAbstractItemView QScrollBar::handle:vertical:hover {
+    background: #4a525c;
+}
+
+QComboBox QAbstractItemView QScrollBar::sub-line:vertical,
+QComboBox QAbstractItemView QScrollBar::add-line:vertical {
+    background: transparent;
+    border: none;
+    height: 12px;
+    subcontrol-origin: margin;
+}
+
+QComboBox QAbstractItemView QScrollBar::sub-line:vertical {
+    subcontrol-position: top;
+}
+
+QComboBox QAbstractItemView QScrollBar::add-line:vertical {
+    subcontrol-position: bottom;
+}
+
+/* Styling a sub-control makes the style stop drawing its own version of it: the
+   moment ::up-button got a background, the arrow inside it vanished — the
+   buttons kept working, they just had nothing in them. Qt only puts an arrow
+   back through an image, and a resource SVG carries a baked fill that the
+   palette map cannot rewrite, so %ARROW_UP% / %ARROW_DOWN% are substituted by
+   ThemeManager::apply() with triangles drawn in the accent's foreground. The
+   buttons themselves carry the same teal as the Run Analysis button. */
+QSpinBox::up-button, QDoubleSpinBox::up-button {
+    subcontrol-origin: border;
+    subcontrol-position: top right;
+    background-color: #7ea8a0;
+    border: none;
+    border-top-right-radius: 7px;
+    width: 20px;
+}
+
+QSpinBox::down-button, QDoubleSpinBox::down-button {
+    subcontrol-origin: border;
+    subcontrol-position: bottom right;
+    background-color: #7ea8a0;
+    border: none;
+    border-bottom-right-radius: 7px;
+    width: 20px;
+}
+
+QSpinBox::up-button:hover, QDoubleSpinBox::up-button:hover,
+QSpinBox::down-button:hover, QDoubleSpinBox::down-button:hover {
+    background-color: #93bcb3;
+}
+
+QSpinBox::up-button:pressed, QDoubleSpinBox::up-button:pressed,
+QSpinBox::down-button:pressed, QDoubleSpinBox::down-button:pressed {
+    background-color: #6b968f;
+}
+
+QSpinBox::up-button:disabled, QDoubleSpinBox::up-button:disabled,
+QSpinBox::down-button:disabled, QDoubleSpinBox::down-button:disabled {
+    background-color: #2f3a38;
+}
+
+QSpinBox::up-arrow, QDoubleSpinBox::up-arrow {
+    image: url(%ARROW_UP%);
+    width: 9px;
+    height: 6px;
+}
+
+QSpinBox::down-arrow, QDoubleSpinBox::down-arrow {
+    image: url(%ARROW_DOWN%);
+    width: 9px;
+    height: 6px;
+}
+
+/* ---------- Checkboxes & group boxes ---------- */
+
+QCheckBox {
+    spacing: 8px;
+    color: #e4e7ec;
+}
+
+QCheckBox::indicator, QGroupBox::indicator {
+    width: 16px;
+    height: 16px;
+    border: 1px solid #3a414b;
+    border-radius: 5px;
+    background-color: #0f1216;
+}
+
+QCheckBox::indicator:hover, QGroupBox::indicator:hover {
+    border-color: #7ea8a0;
+}
+
+QCheckBox::indicator:checked, QGroupBox::indicator:checked {
+    background-color: #7ea8a0;
+    border-color: #7ea8a0;
+}
+
+QGroupBox {
+    border: none;
+    margin-top: 8px;
+    font-weight: 600;
+    color: #e4e7ec;
+}
+
+QGroupBox::title {
+    subcontrol-origin: margin;
+    subcontrol-position: top left;
+    left: 24px;
+    top: 0px;
+    padding: 3px 2px;
+}
+
+/* ---------- Buttons ---------- */
+
+QPushButton {
+    background-color: #22272f;
+    border: 1px solid #333a44;
+    border-radius: 8px;
+    padding: 8px 16px;
+    color: #e4e7ec;
+}
+
+QPushButton:hover {
+    background-color: #272d36;
+    border-color: #3f4753;
+}
+
+QPushButton:pressed {
+    background-color: #1c2128;
+}
+
+QPushButton:disabled {
+    color: #5c646e;
+    background-color: #191d23;
+    border-color: #242932;
+}
+
+QPushButton#RunButton {
+    background-color: #7ea8a0;
+    border: none;
+    color: #10201d;
+    font-size: 16px;
+    font-weight: 700;
+    border-radius: 10px;
+}
+
+QPushButton#RunButton:hover {
+    background-color: #93bcb3;
+}
+
+QPushButton#RunButton:pressed {
+    background-color: #6b968f;
+}
+
+QPushButton#RunButton:disabled {
+    background-color: #2f3a38;
+    color: #6b7d79;
+}
+
+/* Same solid fill as the run buttons, one size down: an outlined button was
+   too faint to find on the light themes.
+   Every selector here names the Card ancestor as well. This button is the one
+   run button that sits inside a card, and "QFrame#Card QWidget" above is more
+   specific than a bare "#SecondaryRunButton" — without the qualified form the
+   fill is silently dropped and only the text shows. */
+QPushButton#SecondaryRunButton,
+QFrame#Card QPushButton#SecondaryRunButton {
+    background-color: #7ea8a0;
+    border: none;
+    border-radius: 9px;
+    color: #10201d;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+QPushButton#SecondaryRunButton:hover,
+QFrame#Card QPushButton#SecondaryRunButton:hover {
+    background-color: #93bcb3;
+}
+
+QPushButton#SecondaryRunButton:pressed,
+QFrame#Card QPushButton#SecondaryRunButton:pressed {
+    background-color: #6b968f;
+}
+
+/* Outlined when disabled, and deliberately in the hint tokens rather than the
+   muted-surface ones: #2f3a38 and friends are dark-theme greys that every
+   light palette maps to near-white, which left the button invisible on paper
+   backgrounds. #79818c is the hint colour, readable on both. */
+QPushButton#SecondaryRunButton:disabled,
+QFrame#Card QPushButton#SecondaryRunButton:disabled {
+    background-color: transparent;
+    border: 1px solid #79818c;
+    color: #79818c;
+}
+
+/* Gear button and its theme menu (top bar, far right) */
+
+QToolButton#GearButton {
+    background: transparent;
+    border: none;
+    border-radius: 8px;
+    padding: 4px;
+    color: #99a1ac;
+}
+
+QToolButton#GearButton:hover {
+    background-color: #22272f;
+    color: #d7e6e2;
+}
+
+QToolButton#GearButton::menu-indicator {
+    image: none;
+    width: 0;
+}
+
+/* ---------- Window controls (native title bar replacement) ---------- */
+
+QToolButton#WindowButton, QToolButton#WindowCloseButton {
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    padding: 8px;
+    min-width: 20px;
+    min-height: 20px;
+}
+
+QToolButton#WindowButton:hover {
+    background-color: #22272f;
+}
+
+QToolButton#WindowButton:pressed {
+    background-color: #1c2128;
+}
+
+/* Only the close button turns red, the convention everywhere else. */
+QToolButton#WindowCloseButton:hover {
+    background-color: #cf7f7f;
+}
+
+/* Darker than the hover, and already in the palette table so it follows every
+   theme. A colour not in that table would stay dark-red on a light theme. */
+QToolButton#WindowCloseButton:pressed {
+    background-color: #5c3a3e;
+}
+
+QMenu {
+    background-color: #1b1f26;
+    border: 1px solid #2a2f38;
+    border-radius: 10px;
+    padding: 6px;
+    color: #e4e7ec;
+}
+
+QMenu::item {
+    padding: 7px 26px 7px 30px;
+    border-radius: 6px;
+}
+
+QMenu::item:selected {
+    background-color: #1e2a28;
+    color: #d7e6e2;
+}
+
+QMenu::item:disabled {
+    color: #69717b;
+}
+
+QMenu::separator {
+    height: 1px;
+    background: #2a2f38;
+    margin: 5px 8px;
+}
+
+QMenu::indicator {
+    width: 14px;
+    height: 14px;
+    left: 9px;
+}
+
+QPushButton#DangerButton {
+    background-color: #2a2022;
+    border: 1px solid #5c3a3e;
+    color: #cf9a9a;
+}
+
+QPushButton#DangerButton:hover {
+    background-color: #33262a;
+}
+
+QPushButton#DangerButton:disabled {
+    background-color: #1e1a1c;
+    border-color: #2c2427;
+    color: #5c646e;
+}
+
+QToolButton {
+    background-color: #22272f;
+    border: 1px solid #333a44;
+    border-radius: 7px;
+    padding: 6px 12px;
+    color: #e4e7ec;
+}
+
+QToolButton:hover {
+    background-color: #272d36;
+}
+
+/* ---------- Run page ---------- */
+
+QLabel#StateChip {
+    border-radius: 13px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    padding: 0 14px;
+    background-color: #22272f;
+    color: #99a1ac;
+}
+
+QLabel#StateChip[state="running"] {
+    background-color: #2f2a17;
+    color: #d3a25e;
+}
+
+QLabel#StateChip[state="paused"] {
+    background-color: #1e2733;
+    color: #7f9cc4;
+}
+
+QLabel#StateChip[state="success"] {
+    background-color: #1e2a24;
+    color: #7fb08a;
+}
+
+QLabel#StateChip[state="failed"] {
+    background-color: #2a2022;
+    color: #cf7f7f;
+}
+
+QLabel#PhaseLabel {
+    color: #99a1ac;
+    font-size: 13px;
+}
+
+QLabel#ElapsedLabel {
+    color: #e4e7ec;
+    font-size: 14px;
+    font-weight: 600;
+    font-family: "Consolas";
+}
+
+QProgressBar {
+    background-color: #0f1216;
+    border: 1px solid #282d36;
+    border-radius: 9px;
+    text-align: center;
+    color: #e4e7ec;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+QProgressBar::chunk {
+    border-radius: 8px;
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                                stop:0 #5c847d, stop:1 #7ea8a0);
+}
+
+QPlainTextEdit#Console {
+    background-color: #0d0f13;
+    border: 1px solid #262b33;
+    border-radius: 10px;
+    padding: 8px;
+    color: #d3dae2;
+}
+
+QLabel#SummaryBody {
+    color: #b6bec9;
+    font-size: 13px;
+}
+
+/* ---------- Viewer ---------- */
+
+/* Map canvas. The rounded background and border live on the holder, which is
+   the widget that stays put whether the map or the "no raster" placeholder is
+   on top; the view itself draws nothing of its own. Card colours, not a
+   near-black of its own, so the canvas reads as one more panel of the page —
+   opaque, though, since a map needs a solid backing. */
+QFrame#CanvasHolder {
+    background-color: #1b1f26;
+    border: 1px solid #282d36;
+    border-radius: 12px;
+}
+
+QFrame#CanvasHolder QLabel {
+    background: transparent;
+}
+
+/* Opaque, and the same colour as the holder behind it. A transparent
+   QGraphicsView would push every repaint up to the window background. */
+QGraphicsView#ViewerCanvas {
+    background-color: #1b1f26;
+    border: none;
+}
+
+QSlider::groove:horizontal {
+    height: 6px;
+    background: #22272f;
+    border: 1px solid #333a44;
+    border-radius: 3px;
+}
+
+QSlider::sub-page:horizontal {
+    background: #7ea8a0;
+    border-radius: 3px;
+}
+
+QSlider::handle:horizontal {
+    background: #e4e7ec;
+    border: 2px solid #7ea8a0;
+    width: 12px;
+    height: 12px;
+    margin: -5px 0;
+    border-radius: 7px;
+}
+
+QWidget#OverlayPanel {
+    background-color: #1b1f26;
+    border: 1px solid #333a44;
+    border-radius: 9px;
+}
+
+/* Same weight and size as the field labels beside it (Layer, Color scale,
+   Filter); no font-family, so it follows whatever the UI font is set to. */
+QLabel#OverlayPanelTitle {
+    color: #b6bec9;
+    font-size: 14px;
+    font-weight: 400;
+    background: transparent;
+    padding-bottom: 2px;
+}
+
+QWidget#OverlayPanel QCheckBox {
+    font-size: 13px;
+    background: transparent;
+}
+
+/* ---------- Guide & About ---------- */
+
+QTextBrowser#GuideBrowser {
+    background-color: #1b1f26;
+    border: 1px solid #282d36;
+    border-radius: 12px;
+    padding: 16px;
+    font-size: 14px;
+}
+
+QLabel#AboutTitle {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    color: #eef1f5;
+}
+
+QLabel#AboutBody {
+    font-size: 14px;
+    color: #b6bec9;
+}
+
+/* ---------- Tab widget (generic, for consistency) ---------- */
+
+QTabWidget::pane {
+    border: 1px solid #282d36;
+    border-radius: 10px;
+    top: -1px;
+}
+
+QTabBar::tab {
+    background: transparent;
+    color: #99a1ac;
+    padding: 8px 16px;
+    border: none;
+    border-radius: 8px;
+    margin-right: 4px;
+}
+
+QTabBar::tab:hover {
+    background-color: #22272f;
+    color: #e4e7ec;
+}
+
+QTabBar::tab:selected {
+    background-color: #1e2a28;
+    color: #a8d0c8;
+    font-weight: 600;
+}
+
+/* ---------- Scrollbars ---------- */
+
+QScrollBar:vertical {
+    background: transparent;
+    width: 10px;
+    margin: 2px;
+}
+
+QScrollBar::handle:vertical {
+    background: #2e343d;
+    border-radius: 4px;
+    min-height: 30px;
+}
+
+QScrollBar::handle:vertical:hover {
+    background: #3a414b;
+}
+
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+    height: 0;
+}
+
+QScrollBar:horizontal {
+    background: transparent;
+    height: 10px;
+    margin: 2px;
+}
+
+QScrollBar::handle:horizontal {
+    background: #2e343d;
+    border-radius: 4px;
+    min-width: 30px;
+}
+
+QScrollBar::handle:horizontal:hover {
+    background: #3a414b;
+}
+
+QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
+    width: 0;
+}
+
+QScrollArea {
+    border: none;
+}
+
+/* ---------- Message boxes ---------- */
+
+QMessageBox {
+    background-color: #1b1f26;
+}
+
+/* Without this the label paints the generic QWidget background (#14171c) as an
+   opaque box on top of the box's own #1b1f26. */
+QMessageBox QLabel {
+    background: transparent;
+    color: #e4e7ec;
+}
+
+/* ---------- Confirmation dialog (Yes/No) ---------- */
+
+/* Fixed-size, icon-free replacement for QMessageBox::question, so every
+   confirmation in the app is the same shape. See confirmdialog.cpp. */
+QDialog#ConfirmDialog {
+    background-color: #1b1f26;
+}
+
+QLabel#ConfirmText {
+    background: transparent;
+    color: #e4e7ec;
+    font-size: 14px;
+}
+
+QPushButton#ConfirmButton {
+    background-color: #22272f;
+    border: 1px solid #333a44;
+    border-radius: 8px;
+    padding: 9px 0px;
+    color: #e4e7ec;
+}
+
+QPushButton#ConfirmButton:hover {
+    background-color: #272d36;
+    border-color: #3f4753;
+}
+
+QPushButton#ConfirmButton:pressed {
+    background-color: #1c2128;
+}
+
+QPushButton#ConfirmButton:default {
+    border-color: #3f4753;
+}

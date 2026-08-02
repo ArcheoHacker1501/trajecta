@@ -85,3 +85,9 @@ __pycache__/
 *.rar
 *.tar
 *.zip
+
+# Qt/CMake build trees under gui/ (build/ alone does not match these)
+build-*/
+gui/**/build*/
+*.qrc.depends
+.qt/

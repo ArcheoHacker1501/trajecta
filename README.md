@@ -1,47 +1,45 @@
 # Trajecta
 
-CPU and GPU-accelerated least-cost path analysis on terrain surfaces.
+Trajecta is a user-friendly least-cost analysis tool specifically developed to be used in Digital Humanities and by users with only a basic computer science background. Please, contact me for bug reporting, problems during the installation or additional features you would like to see developed and included in future releases. 
+
+## Available Versions
+
+### Release (Installer)
+- v1.0.0 - now with **Trajecta Studio UI** - NEW!
+- v0.1.1
+- v0.1.0
+
+### Source Code
+- v1.0.0 - NEW!
+- v0.1.1
+- v0.1.0
 
 ## Overview
 
-Trajecta provides two complementary workflows for movement modeling:
-- **FETE** (From-Everywhere-To-Everywhere): accessibility and path density from many sources.
-- **LCPA** (Least-Cost Path Analysis): optimal routes from one origin to multiple destinations.
+Currently, Trajecta provides two complementary workflows for movement modeling:
+- **FETE** (From-Everywhere-To-Everywhere): accessibility and path density from many sources ([D. A. White and S. B. Barber 2012](https://www.sciencedirect.com/science/article/pii/S0305440312001379)).
+- **LCPA** (Least-Cost Path Analysis): optimal routes from one origin to multiple destinations ([D. A. White 2015](https://www.cambridge.org/core/journals/advances-in-archaeological-practice/article/basics-of-least-cost-analysis-for-archaeological-applications/DE502C37794C0E200AE7FA6A7529E25E?utm_campaign=shareaholic&utm_medium=copy_link&utm_source=bookmark)).
 
-Both modes use anisotropic cost functions and support cost surface modifiers from polyline shapefiles.
+Both modes use anisotropic cost functions and support cost surface modifiers in both raster and vector form.
 
-## Platform Support
+### Graphical Interface — Trajecta Studio
 
-- **Windows 10/11**: Supported (CPU and GPU)
-- **Linux**: Experimental (CPU and GPU with CUDA). Some Windows-specific code paths still need portability updates.
-- **macOS**: Not currently supported (CUDA not available and Windows-specific code paths). CPU-only port is planned.
+Trajecta ships with **Trajecta Studio**, a graphical interface installed automatically by the installer. It exposes every parameter of the console program through a validated form, shows live progress and results, and finds the GDAL/OSGeo4W libraries automatically — no PATH configuration required.
 
-## Requirements
+## Currently supported Platform
 
-- CMake 3.24+
-- C++17 compiler
-- GDAL 3.x (external dependency)
-- CUDA Toolkit 11.0+ (required for current build due to .cu sources)
-- NVIDIA GPU (for GPU mode)
-
-Windows uses **OSGeo4W** for GDAL. Linux uses system packages. macOS is not supported yet.
+- **Windows 10/11**: Supported
+- **Linux**: Experimental. Some Windows-specific code paths still need portability updates.
 
 ## Quick Start
 
-1. Follow the installation guide: `INSTALL.md`
-2. Build the project with CMake
-3. Run the executable from the build output
-
-Optional: run `scripts/check_gdal.ps1` (Windows) or `scripts/check_gdal.sh` (Linux) to validate GDAL.
+Follow instructions in `USER_FRIENDLY_INSTALL.md` for a user-firendly installation of Trajecta through the Trajecta installer (RECOMMENDED FOR MOST USERS).
 
 ## Documentation
 
-- `INSTALL.md` - Installation and build instructions
-- `USAGE.md` - Detailed usage guide
+- `INSTALL_GUIDE.md` - User-firendly installation instructions
 - `CONTRIBUTING.md` - Contributing guidelines
 - `THIRD_PARTY_NOTICES.md` - Third-party licenses
-- `RELEASE_CHECKLIST.md` - Steps to prepare a release
-- `RELEASE_NOTES_TEMPLATE.md` - Release notes template
 
 ## Release (Maintainers)
 
@@ -53,7 +51,7 @@ Optional: run `scripts/check_gdal.ps1` (Windows) or `scripts/check_gdal.sh` (Lin
 If you use Trajecta in your research, please cite:
 
 ```
-Stefano Aprà (Institute for the Study of the Ancient World - NYU)
+Stefano Aprà - Institute for the Study of the Ancient World (NYU)
 ```
 
 ## License
@@ -62,6 +60,5 @@ GPL-3.0. See `LICENSE` for details.
 
 ## Acknowledgments
 
-- Gunrock GPU graph library
 - GDAL for geospatial data I/O
-- Tobler walking function (White 2015 variant [The Basics of Least Cost Analysis for Archaeological Applications])
+
