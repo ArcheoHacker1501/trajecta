@@ -13,9 +13,9 @@ Currently, Trajecta provides two complementary workflows for movement modeling (
 
 ### FETE — From Everywhere To Everywhere
 
-As analysis model, FETE was originally conceptualized by White & Barber (2012). The FETE algorithm implemented by Trajecta allows to calculate a high number of least-cost paths connecting every point to every other point of a regular or randomly scattered point grid. To compute LCPs, DEM or other elevation based data can be used to calculate slope which can then be transformed using cost functions (e.g. Tobler's Hiking Function). Additional costs can be added as for waterbodies or terrain indexes.
+As an analysis model, FETE was originally conceptualized by White & Barber (2012). The FETE algorithm implemented by Trajecta allows to calculate a high number of least-cost paths connecting every point to every other point of a regular or randomly scattered point grid. To compute LCPs, DEM or other elevation based data can be used to calculate slope which can then be transformed using cost functions (e.g. Tobler's Hiking Function). Additional costs can be added as for waterbodies or terrain indexes.
 
-Based on all the LCPs calculated, overlap analysis is then computed and a density raster is created, with the same resolution as the input DEM. Different color gradients can be used to display most probable paths among all calculated LCPs.
+Based on all the LCPs calculated, overlap analysis is then computed and a density raster is created, with the same resolution as the input DEM. Different color gradients and filtering options can be used to display most probable paths among all calculated LCPs.
 
 |![](gui/TrajectaStudio/assets/guide/Grid_FETE.jpg)|![](gui/TrajectaStudio/assets/guide/unfiltered_FETE.jpg)|
 |:-:|:-:|
