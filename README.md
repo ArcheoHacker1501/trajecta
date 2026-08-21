@@ -33,6 +33,19 @@ For an introduction to Least-Cost Path Analysis (LCPA), see White (2015). Trajec
 |:-:|
 |*Least-Cost Paths from single origin to multiple destinations calculated using Trajecta and SRTM 30m DEM.*|
 
+## Algorithm parameters for FETE and LCPA
+
+**Neighbours** — connectivity of the search grid (8, 16, 24, 32, 64). Higher values allow finer path angles at the price of speed. A connectivity radius of 16 (Knigth's Move) is the usual choice.
+
+**Cost function** — the anisotropic hiking model applied to slope. Currently, the following cost function have been implemented in Trajecta:
+- Modified Tobler hiking function (White 2015);
+- Márquez-Pérez et al. (2017);
+- Irmischer & Clarke (2017).
+
+**Path smoothing buffer** — buffer in cells applied around each computed path when accumulating results. This function allows to calculate wider paths, thus maximising the possibility that actual, historical path(s) were located inside the modeled high-traversability areas.
+
+**Cost modifiers & barriers** — Modifiers let you make specific features (water bodies, restricted areas, specific types of terrain) more expensive to cross. The polyline buffer widens rasterized lines so paths cannot slip diagonally across them. The barrier threshold turns extreme multipliers (e.g. 999999) into hard barriers: cells at or above the threshold are excluded from movement, which also keeps the computation fast.
+
 ## Post-processing: NNI — Natural Neighbour Interpolation
 
 The **Post-processing** page turns a FETE density raster into a smooth, continuous surface using **discrete Sibson (natural neighbour) interpolation (Park et al. 2006)**. Cells at or above the **sample threshold** act as sample points; every other cell receives the average of the samples whose influence area it would claim. Sample values are preserved exactly. The optional **max search radius** caps how far the interpolation reaches into empty areas (beyond it, cells take the value of their nearest sample), which keeps large rasters fast. After a successful FETE run the density raster is filled in automatically, allowing for direct post-processing.
@@ -40,14 +53,6 @@ The **Post-processing** page turns a FETE density raster into a smooth, continuo
 |![](gui/TrajectaStudio/assets/guide/FETE_density.jpg)|![](gui/TrajectaStudio/assets/guide/FETE_density_NNI.jpg)|
 |:-:|:-:|
 |*FETE density raster generated with Trajecta.*|*The same FETE density raster after NNI.*|
-
-## Sample points: imported or generated
-
-In FETE mode the sample points can either be **imported from a file** (e.g. .shp, .geojson, .csv), or **directly generated from the DEM**.
-
-Generation takes two parameters. The **density** is expressed either as a **point spacing** (one point every N rows and every N columns, so the count falls with the square of N) or as a **target number of points**, from which the spacing is derived using the number of usable DEM cells. The **arrangement** is either a **regular grid**, which puts every point at the same offset inside its block, or **stratified random**, which picks one random cell per block: same density, none of the regularity a grid imposes on the result. A stratified random layer is reproducible from its **seed**.
-
-Points are only placed on cells a path can actually cross, so NoData areas stay empty. The layer is written to the output folder as a shapefile *before* the analysis starts and is then read back as its input: what the run consumed is always on disk, and it appears in the **Viewer** as a selectable overlay. The setup page shows the resulting point count while you type, with a warning above roughly 50,000 points — FETE cost grows with the square of the number of points.
 
 ## Input requirements
 
@@ -60,26 +65,12 @@ Trajecta allows for different types of inputs and file formats:
 | **Vector modifiers** | Polylines with a float **cost** field holding the multiplier; for .csv the geometry must be in a WKT column. |
 | **Raster modifiers** | GeoTIFF with the same dimensions as the DEM; cell values are multipliers (1.0 = unchanged, 2.0 = double cost). |
 
-## Cost modifiers & barriers
-
-Modifiers let you make specific features (water bodies, restricted areas, specific types of terrain) more expensive to cross. The **polyline buffer** widens rasterized lines so paths cannot slip diagonally across them. The **barrier threshold** turns extreme multipliers (e.g. 999999) into hard barriers: cells at or above the threshold are excluded from movement, which also keeps the computation fast.
-
-## Algorithm parameters
-
-**Neighbours** — connectivity of the search grid (8, 16, 24, 32, 64). Higher values allow finer path angles at the price of speed. A connectivity radius of 16 (Knigth's Move) is the usual choice.
-
-**Cost function** — the anisotropic hiking model applied to slope. Currently, the following cost function have been implemented in Trajecta:
-- Modified Tobler hiking function (White 2015);
-- Márquez-Pérez et al. (2017);
-- Irmischer & Clarke (2017).
-
-**Path smoothing buffer** — buffer in cells applied around each computed path when accumulating results. This function allows to calculate wider paths, thus maximising the possibility that actual, historical path(s) were located inside the modeled high-traversability areas.
-
 ## Outputs
 
-**Both modes:** slope raster, base cost surface, and (with modifiers) the additional and total cost surfaces.  
+**FETE, LCPA:** slope raster, base cost surface, and (with modifiers) the additional and total cost surfaces.  
 **FETE:** the path-density raster, plus the sample points shapefile when the points were generated from the DEM.  
 **LCPA:** the paths raster and the paths polyline shapefile.
+**NNI:** modified FETE density raster.
 
 ## GDAL requirement
 
