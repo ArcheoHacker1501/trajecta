@@ -1,7 +1,7 @@
 # Trajecta
 
 > [!IMPORTANT]
-> To install the latest version of Trajecta (v1.0.1) [download the installer](https://github.com/ArcheoHacker1501/trajecta/releases/tag/v1.0.1) and click on it once the download is done. Then follow the instructions.
+> To install the latest version of Trajecta (**v1.0.1**) [download the installer](https://github.com/ArcheoHacker1501/trajecta/releases/tag/v1.0.1) and click on it once the download is done. Then follow the instructions.
 
 **Trajecta** is a free, open-source least-cost analysis (LCA) software distributed under the GNU General Public License 3.0. It is shipped along with **Trajecta Studio**, a fully customized GUI (Graphic User Interface) specifically developed to provide a seamless and user-friendly experience to every type of user, even without prior experience. Trajecta and Trajecta Studio are primarily designed to be used by archaeologists, historians, geographers, and other researchers who need to model movement across landscapes to investigate spatial patterns in the Ancient World.
 
