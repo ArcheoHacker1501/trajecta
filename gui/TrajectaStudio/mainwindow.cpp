@@ -5559,18 +5559,18 @@ QWidget *MainWindow::buildGuideOverviewPage()
 
     // The overview prose. Ranged left, since this is something to read.
     auto *intro = addBody(
-        tr("<p>Trajecta is a free, open-source least-cost analysis (LCA) software distributed under the "
-           "GNU General Public License 3.0 and specifically developed "
-           "to provide a seamless and user-friendly experience to every type of user, even without prior experience. It is primarily designed to be used by archaeologists, historians, geographers, and other researchers who need to model movement across landscapes to investigate spatial patterns in the Ancient World. Trajecta is completely written in C++ and Qt for fast and efficient computation. The source code of Trajecta is available on <a href=\"https://github.com/ArcheoHacker1501/trajecta\">GitHub</a>.</p>"
+        tr("<p><b>Trajecta</b> is a free, open-source least-cost analysis (LCA) engine distributed under the "
+           "GNU General Public License 3.0. Trajecta is shipped along with <b>Trajecta Studio</b>, a fully customized GUI (Graphic User Interface) specifically developed to provide a seamless and user-friendly experience to every type of user, even without prior experience. "
+           "Trajecta and Trajecta Studio are primarily designed to be used by archaeologists, historians, and other researchers who need to model movement across landscapes to investigate spatial patterns in the Ancient World. Trajecta is completely written in C++ and Qt for fast and efficient computation. The source code of Trajecta is available on <a href=\"https://github.com/ArcheoHacker1501/trajecta\">GitHub</a>.</p>"
 
            "<p>For an introductory walkthrough on how to use Trajecta, you can launch this in-app "
            "<a href=\"trajecta:walkthrough\"><b>tutorial</b></a>. You can also click on the <b>?</b> badge beside any field to get "
            "information about the selected parameter or function. For additional details on Trajecta's features, you can also refer to the specific pages in this <b>Guide</b> section.</p>"
            "<p>At its core, Trajecta models movement across a landscape with "
-           "<b>FETE</b> and <b>LCPA</b>, refines and checks the result with "
-           "<b>NNI interpolation</b> and <b>route comparison</b>, and tests it "
-           "against real settlement patterns with <b>site&#8211;corridor "
-           "coherence</b>. Finally, the Viewer offers a simple platform to visualize the results of the computations.</p>"
+           "<b>FETE (From-Everywhere-To-Everywhere)</b> and <b>LCPA (Least-Cost Path Analysis)</b>, refines and checks the result with "
+           "<b>NNI (Natural Neighbour Interpolation)</b> and the <b>route comparison tool</b>, and tests it "
+           "against real settlement patterns with the <b>site&#8211;corridor "
+           "coherence tool</b>. Finally, the built in <b>Viewer</b> offers a simple platform to visualize the results of the computations directly in-app.</p>"
 
            "<p>The list on the left opens the rest of the <b>Guide</b>, and each tool is described in detail. For contacts and information about the author, please refer to the <b>About</b> section.</p>"
 
