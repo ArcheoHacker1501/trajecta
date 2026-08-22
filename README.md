@@ -86,7 +86,7 @@ The route comparison tool measures a route computed through FETE or LCPA against
 
 The tool generates a short report. The report gives, in both directions, the median, the 90th percentile and the maximum distance from one line to the other, and the share of each line that runs within the tolerance of the other. A distribution rather than a single number, because a route can follow the real one closely for 9 km and then take the wrong side of a hill for 1 km — and an average hides exactly that. Both directions are needed too: a short computed path lying on top of a long known one is close in one direction and far in the other. The worst disagreement anywhere, the maximum of the two, is the Hausdorff distance (Hausdorff 1914).
 
-# Post-processing: site-corridor coherence
+# Post-processing: site-corridor coherence analysis
 
 The third tool asks the question the FETE was computed for: **do the sites sit on the
 movement the surface predicts?** It takes the FETE surface and a **point layer of
