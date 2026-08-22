@@ -15,7 +15,7 @@ Importantly, Trajecta was inspired and made possible thanks to the previous work
 > [!IMPORTANT]
 > Be patient, this software is currently under development and can contain bugs or errors! For bug reporting, problems during the installation, or to suggest improvements or additional features to be included in Trajecta, please contact me or use the in-app **report form**.
 
-# FETE — From-Everywhere-To-Everywhere
+# Processing: FETE — From-Everywhere-To-Everywhere
 
 Trajecta provides two complementary workflows for modeling movement across terrain: FETE, described here, and LCPA on the next page. Both use anisotropic cost functions (e.g. Modified Tobler's Hiking Function, see Algorithm parameters) and support cost surface modifiers (e.g. waterbodies, terrain indexes).
 
@@ -41,7 +41,7 @@ The density raster generated can then be used in different ways and further anal
 <tr><td align="center"><i>Filtered FETE raster using only top 20% results.</i></td></tr>
 </table>
 
-# LCPA — Least-Cost Path Analysis
+# Processing: LCPA — Least-Cost Path Analysis
 
 For a detailed introduction to Least-Cost Path Analysis (LCPA), see White (2015). LCPA is a spatial analysis method, typically implemented in GIS environments, that identifies the minimum cumulative-cost route between two points across a cost surface. Each cell of the raster grid represents the cost of traversing it – expressed in terms of physical effort, time, energy expenditure, or resistance to movement – calculated as a function of variables such as slope, land cover, hydrography, or other environmental and cultural factors relevant to the study context.
 
