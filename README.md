@@ -27,8 +27,8 @@ The density raster generated can then be used in different ways and further anal
 
 <table border="0" cellspacing="10" width="100%">
 <tr>
-<td align="center"><img src="gui/TrajectaStudio/assets/guide/Grid_FETE.jpg" width="45%"></td>
-<td align="center"><img src="gui/TrajectaStudio/assets/guide/unfiltered_FETE.jpg" width="45%"></td>
+<td align="center"><img src="gui/TrajectaStudio/assets/guide/Grid_FETE.jpg" width="100%"></td>
+<td align="center"><img src="gui/TrajectaStudio/assets/guide/unfiltered_FETE.jpg" width="100%"></td>
 </tr>
 <tr>
 <td align="center"><i>Example of regular point grid and SRTM 30m DEM used as input for FETE computation.</i></td>
@@ -37,7 +37,7 @@ The density raster generated can then be used in different ways and further anal
 </table>
 
 <table border="0" cellspacing="10" width="100%">
-<tr><td align="center"><img src="gui/TrajectaStudio/assets/guide/filtered_FETE.jpg" width="90%"></td></tr>
+<tr><td align="center"><img src="gui/TrajectaStudio/assets/guide/filtered_FETE.jpg" width="100%"></td></tr>
 <tr><td align="center"><i>Filtered FETE raster using only top 20% results.</i></td></tr>
 </table>
 
@@ -71,8 +71,8 @@ successful FETE run the density raster is filled in automatically, allowing for 
 
 <table border="0" cellspacing="10" width="100%">
 <tr>
-<td align="center"><img src="gui/TrajectaStudio/assets/guide/FETE_density.jpg" width="45%"></td>
-<td align="center"><img src="gui/TrajectaStudio/assets/guide/FETE_density_NNI.jpg" width="45%"></td>
+<td align="center"><img src="gui/TrajectaStudio/assets/guide/FETE_density.jpg" width="100%"></td>
+<td align="center"><img src="gui/TrajectaStudio/assets/guide/FETE_density_NNI.jpg" width="100%"></td>
 </tr>
 <tr>
 <td align="center"><i>FETE density raster generated with Trajecta.</i></td>
