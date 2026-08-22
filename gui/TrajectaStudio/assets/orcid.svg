@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- The ORCID iD mark: a green disc carrying a white "iD". Unlike github.svg
+       this one keeps its own colours instead of being dyed by the theme, and it
+       carries them here rather than being recoloured in code, because the green
+       is part of the mark itself — a monochrome ORCID icon is not the ORCID
+       icon. The "D" is one path with its counter as a second subpath, so the
+       disc shows through the hole under the even-odd rule. -->
+  <circle cx="128" cy="128" r="128" fill="#A6CE39"/>
+  <g fill="#FFFFFF">
+    <circle cx="79" cy="86" r="12"/>
+    <rect x="67" y="106" width="24" height="84" rx="2"/>
+    <path fill-rule="evenodd"
+          d="M111,106 H147 A42,42 0 0 1 147,190 H111 Z
+             M129,124 H147 A24,24 0 0 1 147,172 H129 Z"/>
+  </g>
+</svg>

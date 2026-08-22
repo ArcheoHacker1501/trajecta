@@ -132,6 +132,47 @@ bool GdalApi::load(const QStringList &candidateDirs,
         && resolve(G_GetGeometryRef, "OGR_G_GetGeometryRef")
         && resolve(G_GetPointCount, "OGR_G_GetPointCount")
         && resolve(G_GetPoint, "OGR_G_GetPoint");
+
+    // Optional, and deliberately outside the chain above: these three refuse a
+    // route comparison whose layers are in degrees, and reproject an imported
+    // vector onto the raster beneath it. A GDAL build that somehow lacked them
+    // should still load and run everything else — a vector then draws in its
+    // own coordinates, which is right whenever it already matches the raster.
+    resolve(L_GetSpatialRef, "OGR_L_GetSpatialRef");
+    resolve(OSRExportToWkt, "OSRExportToWkt");
+    resolve(VSIFree, "VSIFree");
+
+    // The attributes of a feature, and the whole of the writing side. Optional
+    // for the same reason and in the same way: the site-coherence tool asks
+    // canWriteVector() / canWriteRaster() before it promises an output, and
+    // every other part of the application is unaffected by their absence.
+    resolve(F_GetFieldCount, "OGR_F_GetFieldCount");
+    resolve(F_GetFieldDefnRef, "OGR_F_GetFieldDefnRef");
+    resolve(Fld_GetNameRef, "OGR_Fld_GetNameRef");
+    resolve(F_GetFieldAsString, "OGR_F_GetFieldAsString");
+
+    resolve(GetDriverByName, "GDALGetDriverByName");
+    resolve(Create, "GDALCreate");
+    resolve(SetGeoTransform, "GDALSetGeoTransform");
+    resolve(SetProjection, "GDALSetProjection");
+    resolve(SetRasterNoDataValue, "GDALSetRasterNoDataValue");
+    resolve(DatasetCreateLayer, "GDALDatasetCreateLayer");
+    resolve(Fld_Create, "OGR_Fld_Create");
+    resolve(Fld_Destroy, "OGR_Fld_Destroy");
+    resolve(Fld_SetWidth, "OGR_Fld_SetWidth");
+    resolve(Fld_SetPrecision, "OGR_Fld_SetPrecision");
+    resolve(L_CreateField, "OGR_L_CreateField");
+    resolve(L_GetLayerDefn, "OGR_L_GetLayerDefn");
+    resolve(F_Create, "OGR_F_Create");
+    resolve(F_SetFieldDouble, "OGR_F_SetFieldDouble");
+    resolve(F_SetFieldInteger, "OGR_F_SetFieldInteger");
+    resolve(F_SetFieldString, "OGR_F_SetFieldString");
+    resolve(F_SetGeometryDirectly, "OGR_F_SetGeometryDirectly");
+    resolve(L_CreateFeature, "OGR_L_CreateFeature");
+    resolve(G_CreateGeometry, "OGR_G_CreateGeometry");
+    resolve(G_SetPoint_2D, "OGR_G_SetPoint_2D");
+    resolve(G_DestroyGeometry, "OGR_G_DestroyGeometry");
+    resolve(OSRSetFromUserInput, "OSRSetFromUserInput");
     if (!ok) {
         m_error = QStringLiteral("a required GDAL C API symbol is missing");
         FreeLibrary(g_gdalModule);

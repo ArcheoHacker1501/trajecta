@@ -41,6 +41,12 @@ public:
 
 protected:
     void paintEvent(QPaintEvent *event) override;
+    // The wheel never changes the selection. Scrolling a long page with the
+    // pointer anywhere near a combo used to change a parameter of the analysis
+    // silently, which is the kind of mistake that is only noticed in the
+    // results. Refused rather than accepted, so the page underneath scrolls as
+    // if the combo were not there; the list is opened with a click.
+    void wheelEvent(QWheelEvent *event) override;
 
 private:
     void animateArrowTo(qreal angle);

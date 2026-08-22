@@ -146,9 +146,197 @@ QLabel#HelpDot:disabled {
     border-color: #2a2f38;
 }
 
+/* Explicit, not left to "QFrame#Card QWidget" further down this sheet: that
+   rule is what has kept this label transparent everywhere it has been used
+   until now, purely because every one of those places happens to sit inside
+   a card. LargePagesOption (see largepages.cpp) does not — it lives on a
+   bare Advanced settings page — and there the generic "QMainWindow, QWidget"
+   background at the very top of this sheet showed through as a grey pill
+   behind the text instead. A label is never meant to paint one of its own,
+   in a card or out of it. */
 QLabel#HintLabel {
+    background: transparent;
     color: #79818c;
     font-size: 12px;
+}
+
+/* The strip the "Add chunk" button sits on. It spans the page between two
+   cards, and as an ordinary QWidget it painted the opaque window colour across
+   that whole width — a bare band, most obvious on Washi where the artwork
+   behind is interrupted by it. Transparent, only the button itself carries a
+   background. */
+QWidget#AddChunkRow {
+    background: transparent;
+}
+
+/* The column the chunks are stacked in. Same story, and worse: it spans every
+   chunk on the page, so its opaque rectangle became a single slab with the
+   chunk cards printed on it — the gaps between them filled in, and on Washi the
+   cards' own translucency spent on that slab instead of on the artwork. Each
+   chunk is a card in its own right and has to sit on the page like one. */
+QWidget#ChunkHost {
+    background: transparent;
+}
+
+/* What a "?" badge opens on a click. Shaped like a card, because that is what
+   every other panel of explanation in the application looks like, and it is a
+   popup rather than a tooltip so it stays on screen while it is read. */
+QFrame#HelpPopup {
+    background-color: #1b1f26;
+    border: 1px solid #3a414b;
+    border-radius: 12px;
+}
+
+QLabel#HelpPopupText {
+    background: transparent;
+    color: #e4e7ec;
+    font-size: 13px;
+}
+
+/* ---------- The status bar's run ticker ----------
+   A miniature of the run panel: the same chip, the same bar, the same colours.
+   Only the measurements are new, and they are here rather than in the widget so
+   a theme that changes the interface font can still change its size with it. */
+QWidget#RunTicker,
+QWidget#RunTicker QLabel {
+    background: transparent;
+}
+
+QLabel#StateChip[mini="true"] {
+    border-radius: 9px;
+    font-size: 10px;
+    letter-spacing: 1px;
+    padding: 2px 10px;
+    min-width: 0px;
+}
+
+QLabel#TickerKind {
+    color: #b6bec9;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+QProgressBar#MiniProgress {
+    border-radius: 9px;
+    font-size: 10px;
+}
+
+QProgressBar#MiniProgress::chunk {
+    border-radius: 8px;
+}
+
+/* Paused: the same bar, washed out. It is the treatment the interface already
+   gives a control that is there but cannot do anything, which is exactly what a
+   paused run is — and it reads at a glance, before the chip beside it is. */
+QProgressBar#MiniProgress[paused="true"] {
+    color: #5c646e;
+}
+
+QProgressBar#MiniProgress[paused="true"]::chunk {
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                                stop:0 #2f3a38, stop:1 #6b7d79);
+}
+
+/* The drawer the ticker opens: three lines, rolled up out of the bar. */
+QFrame#TickerDrawer {
+    background-color: #1b1f26;
+    border: 1px solid #3a414b;
+    border-radius: 12px;
+}
+
+QLabel#TickerDrawerLine {
+    background: transparent;
+    color: #b6bec9;
+    font-size: 12px;
+}
+
+/* ---------- Guided walkthrough ----------
+   Only colours the palette table already carries, so all eight themes dress the
+   tour without a single new entry in ThemeManager. */
+
+QFrame#TourCallout {
+    background-color: #1a1e24;
+    border: 1px solid #2a2f38;
+    border-radius: 12px;
+}
+
+QLabel#TourTitle {
+    color: #eef1f5;
+    font-size: 17px;
+    font-weight: 600;
+    background: transparent;
+}
+
+QLabel#TourBody {
+    color: #b6bec9;
+    font-size: 14px;
+    background: transparent;
+}
+
+/* The way back, at the left end of the callout's button row. Outlined and not
+   filled: it is plainly a button — same height and same corner as Continue —
+   but the empty middle says which of the two the screen expects. */
+QPushButton#TourBackButton {
+    background: transparent;
+    border: 1px solid #3a414b;
+    border-radius: 10px;
+    color: #b6bec9;
+    font-size: 14px;
+    font-weight: 600;
+    padding: 0 12px;
+}
+
+QPushButton#TourBackButton:hover {
+    border-color: #5c646e;
+    color: #eef1f5;
+}
+
+QPushButton#TourBackButton:pressed {
+    background-color: #22272f;
+    color: #d3dae2;
+}
+
+QToolButton#TourClose {
+    color: #99a1ac;
+    background: transparent;
+    border: none;
+    font-size: 15px;
+    padding: 2px 6px;
+}
+
+QToolButton#TourClose:hover {
+    color: #e4e7ec;
+}
+
+QFrame#TourNavBar {
+    background-color: #1a1e24;
+    border: 1px solid #2a2f38;
+    border-radius: 18px;
+}
+
+/* No vertical padding at all, and a fixed size set in walkthrough.cpp: the
+   chevron is then centred in a square by the style, instead of being pushed
+   off-centre by padding that the glyph's own bearing does not balance. */
+QToolButton#TourNavButton {
+    color: #d3dae2;
+    background: transparent;
+    border: none;
+    font-size: 26px;
+    padding: 0;
+}
+
+QToolButton#TourNavButton:hover {
+    color: #eef1f5;
+}
+
+QToolButton#TourNavButton:disabled {
+    color: #4a525c;
+}
+
+QLabel#TourCounter {
+    color: #99a1ac;
+    font-size: 13px;
+    background: transparent;
 }
 
 /* ---------- Mode cards ---------- */
@@ -169,10 +357,101 @@ QPushButton#ModeCard:hover {
     color: #e4e7ec;
 }
 
+/* Filled, not tinted: with three cards side by side a faint wash was not
+   enough to say which one is selected at a glance. #12211e is the palette's
+   "text drawn on the accent", so it inverts with the accent on light themes. */
 QPushButton#ModeCard:checked {
     border-color: #7ea8a0;
-    background-color: #1e2a28;
-    color: #d7e6e2;
+    background-color: #7ea8a0;
+    color: #12211e;
+    font-weight: 600;
+}
+
+QPushButton#ModeCard:checked:hover {
+    border-color: #7ea8a0;
+    background-color: #7ea8a0;
+    color: #12211e;
+}
+
+/* One rule per mode, all currently set to the accent.
+
+   The cards used to carry a colour each — the fill alone said which analysis
+   was selected rather than only "one of the three is". That was dropped as a
+   look, not as a mechanism: every rule below is still here, still targeting its
+   own [mode], and still overriding the base :checked. Only the values changed.
+   Restoring the coloured cards is five hex edits — lcpa #c9905a, batch #a58bd0,
+   nni #d3a25e, compare #cf7f7f, coherence #7fb08a — and nothing else.
+   The same property is set on the FETE/LCPA switch inside batch processing,
+   which is the same choice made in a smaller place. */
+QPushButton#ModeCard[mode="lcpa"]:checked,
+QPushButton#ModeCard[mode="lcpa"]:checked:hover {
+    border-color: #7ea8a0;
+    background-color: #7ea8a0;
+    color: #12211e;
+}
+
+QPushButton#ModeCard[mode="batch"]:checked,
+QPushButton#ModeCard[mode="batch"]:checked:hover {
+    border-color: #7ea8a0;
+    background-color: #7ea8a0;
+    color: #12211e;
+}
+
+/* The post-processing page picks a tool the same way, and used to borrow the
+   analysis colours — so the same green meant "FETE" on one page and "NNI" on
+   the other. These two are the palettes' "running" and "failed" signal
+   colours, taken for their hue only: every theme already defines them
+   light-on-dark or dark-on-light exactly as the accent is, so they fill
+   correctly everywhere. Blue and rose are the two furthest from the analysis
+   trio (teal, orange, violet) and from each other — which is the whole job of
+   the colour here. */
+/* Amber, not the paused blue it used to wear: on the light themes that blue
+   came out as a deep navy, near enough to the accent that the two pages read
+   as the same colour. This is the palettes' "running" tone — a medium-dark
+   yellow on paper, a warm amber on the dark themes — and it is the one signal
+   colour no other card on either page uses. */
+QPushButton#ModeCard[mode="nni"]:checked,
+QPushButton#ModeCard[mode="nni"]:checked:hover {
+    border-color: #7ea8a0;
+    background-color: #7ea8a0;
+    color: #12211e;
+}
+
+QPushButton#ModeCard[mode="compare"]:checked,
+QPushButton#ModeCard[mode="compare"]:checked:hover {
+    border-color: #7ea8a0;
+    background-color: #7ea8a0;
+    color: #12211e;
+}
+
+/* The third tool on that page. Its rule is kept for the same reason as the
+   others above: the structure outlives the colour choice. */
+QPushButton#ModeCard[mode="coherence"]:checked,
+QPushButton#ModeCard[mode="coherence"]:checked:hover {
+    border-color: #7ea8a0;
+    background-color: #7ea8a0;
+    color: #12211e;
+}
+
+/* The fourth card on the post-processing page — Batch processing, offered
+   there the same way it is on Processing — and, for the same reason as
+   "lcpa"/"batch" above, the same property on the NNI/Compare/Coherence
+   switch inside that batch page. */
+QPushButton#ModeCard[mode="postbatch"]:checked,
+QPushButton#ModeCard[mode="postbatch"]:checked:hover {
+    border-color: #7ea8a0;
+    background-color: #7ea8a0;
+    color: #12211e;
+}
+
+QPushButton#ModeCard:disabled {
+    color: #5c646e;
+}
+
+QPushButton#ModeCard:checked:disabled {
+    background-color: #2f3a38;
+    border-color: #2f3a38;
+    color: #6b7d79;
 }
 
 /* ---------- Inputs ---------- */
@@ -335,9 +614,19 @@ QSpinBox::down-arrow, QDoubleSpinBox::down-arrow {
 
 /* ---------- Checkboxes & group boxes ---------- */
 
+/* outline: none suppresses the style's own native focus rectangle — a
+   plain rounded-grey box drawn around the whole label, not just the little
+   indicator, and never styled to match anything else here. Barely visible
+   on the dark themes, where its grey is close enough to the page behind it,
+   but a clear stray box on Light — first noticed on Large memory pages'
+   checkbox (largepages.cpp), the one most likely to hold keyboard focus the
+   moment a dialog built on it opens. Keyboard focus still has its own
+   indication: the indicator recolours to the accent below, the same as
+   hovering it. */
 QCheckBox {
     spacing: 8px;
     color: #e4e7ec;
+    outline: none;
 }
 
 QCheckBox::indicator, QGroupBox::indicator {
@@ -348,7 +637,8 @@ QCheckBox::indicator, QGroupBox::indicator {
     background-color: #0f1216;
 }
 
-QCheckBox::indicator:hover, QGroupBox::indicator:hover {
+QCheckBox::indicator:hover, QGroupBox::indicator:hover,
+QCheckBox::indicator:focus, QGroupBox::indicator:focus {
     border-color: #7ea8a0;
 }
 
@@ -397,6 +687,18 @@ QPushButton:disabled {
     border-color: #242932;
 }
 
+/* The strip a run button sits on, between two cards. Same story as
+   QWidget#AddChunkRow further up: the post-processing rows exist as widgets
+   rather than as bare layouts, because a whole row has to be shown and hidden
+   with the tool it belongs to — and an ordinary QWidget is caught by the
+   "QMainWindow, QWidget" rule at the top of this file, which painted the
+   opaque window colour clear across the page. "Run analysis" never had the
+   problem: it is added as a layout, so there is no widget of its own to paint.
+   Transparent here, and only the button carries a background. */
+QWidget#RunRow {
+    background: transparent;
+}
+
 QPushButton#RunButton {
     background-color: #7ea8a0;
     border: none;
@@ -418,6 +720,7 @@ QPushButton#RunButton:disabled {
     background-color: #2f3a38;
     color: #6b7d79;
 }
+
 
 /* Same solid fill as the run buttons, one size down: an outlined button was
    too faint to find on the light themes.
@@ -497,7 +800,7 @@ QToolButton#WindowButton:pressed {
 
 /* Only the close button turns red, the convention everywhere else. */
 QToolButton#WindowCloseButton:hover {
-    background-color: #cf7f7f;
+    background-color: #e1281e;
 }
 
 /* Darker than the hover, and already in the palette table so it follows every
@@ -540,20 +843,98 @@ QMenu::indicator {
     left: 9px;
 }
 
-QPushButton#DangerButton {
-    background-color: #2a2022;
-    border: 1px solid #5c3a3e;
-    color: #cf9a9a;
+/* ---------- The three button roles ----------
+
+   Primary: an ordinary action — add, duplicate, move, save, pause. Filled in
+   the accent, like the run buttons, one size down.
+   Danger:  an action that throws work away — delete, skip, stop, cancel.
+   Filled in the palette's amber rather than its red: red is reserved for
+   "this failed", and these buttons are offered, not warnings.
+   Plain QPushButton: everything else.
+
+   Every selector names the Card ancestor too. "QFrame#Card QWidget" earlier in
+   this sheet is more specific than a bare "#Name", and without the qualified
+   form the fill is silently dropped inside a card and only the text shows. */
+
+QPushButton#PrimaryButton,
+QFrame#Card QPushButton#PrimaryButton {
+    background-color: #7ea8a0;
+    border: 1px solid #7ea8a0;
+    color: #12211e;
+    font-weight: 600;
 }
 
-QPushButton#DangerButton:hover {
-    background-color: #33262a;
+QPushButton#PrimaryButton:hover,
+QFrame#Card QPushButton#PrimaryButton:hover {
+    background-color: #93bcb3;
+    border-color: #93bcb3;
 }
 
-QPushButton#DangerButton:disabled {
-    background-color: #1e1a1c;
-    border-color: #2c2427;
-    color: #5c646e;
+QPushButton#PrimaryButton:pressed,
+QFrame#Card QPushButton#PrimaryButton:pressed {
+    background-color: #6b968f;
+    border-color: #6b968f;
+}
+
+/* Outlined in the hint colour when disabled: the dark-theme muted surfaces map
+   to near-white on the paper palettes and left the button invisible there. */
+QPushButton#PrimaryButton:disabled,
+QFrame#Card QPushButton#PrimaryButton:disabled {
+    background-color: transparent;
+    border: 1px solid #79818c;
+    color: #79818c;
+}
+
+/* Red, and the same red on every theme. These four literals appear nowhere in
+   ThemeManager's colour table, so the palette substitution leaves them alone —
+   which is the point: "this button throws work away" has to read identically
+   whichever theme is on, and the amber this used to inherit from each palette
+   said "careful" where it needed to say "stop". Contrast against white text is
+   7.0:1 on the fill, so it stays legible on the paper themes too. */
+QPushButton#DangerButton,
+QFrame#Card QPushButton#DangerButton {
+    background-color: #e1281e;
+    border: 1px solid #e1281e;
+    color: #ffffff;
+    font-weight: 600;
+}
+
+QPushButton#DangerButton:hover,
+QFrame#Card QPushButton#DangerButton:hover {
+    background-color: #e1281e;
+    border-color: #e1281e;
+    color: #ffffff;
+}
+
+QPushButton#DangerButton:pressed,
+QFrame#Card QPushButton#DangerButton:pressed {
+    background-color: #8f1d17;
+    border-color: #8f1d17;
+    color: #ffffff;
+}
+
+QPushButton#DangerButton:disabled,
+QFrame#Card QPushButton#DangerButton:disabled {
+    background-color: transparent;
+    border: 1px solid #79818c;
+    color: #79818c;
+}
+
+/* The fold handle in the bottom-right corner of a chunk. */
+QToolButton#CollapseHandle,
+QFrame#Card QToolButton#CollapseHandle {
+    background: transparent;
+    border: none;
+    padding: 2px 8px;
+    color: #7ea8a0;
+    font-size: 13px;
+}
+
+QToolButton#CollapseHandle:hover,
+QFrame#Card QToolButton#CollapseHandle:hover {
+    color: #a8d0c8;
+    background-color: #1e2a28;
+    border-radius: 6px;
 }
 
 QToolButton {
@@ -648,6 +1029,12 @@ QLabel#SummaryBody {
    on top; the view itself draws nothing of its own. Card colours, not a
    near-black of its own, so the canvas reads as one more panel of the page —
    opaque, though, since a map needs a solid backing. */
+/* While layers are being dragged over the Viewer. The accent, and a dashed
+   edge: the canvas says "let go here" without a word being written on it. */
+QFrame#CanvasHolder[dropTarget="true"] {
+    border: 1px dashed #7ea8a0;
+}
+
 QFrame#CanvasHolder {
     background-color: #1b1f26;
     border: 1px solid #282d36;
@@ -655,6 +1042,22 @@ QFrame#CanvasHolder {
 }
 
 QFrame#CanvasHolder QLabel {
+    background: transparent;
+}
+
+/* The plain widget the map/placeholder stack lives in. As an ordinary QWidget
+   it painted the opaque generic background across the holder's whole interior
+   — the same slab AddChunkRow and ChunkHost had, and here it hid the card
+   colour the holder itself is styled with, showing as a flat grey square (a
+   near-white one on the paper themes) instead of the map's own panel. */
+QWidget#CanvasArea {
+    background: transparent;
+}
+
+/* The line under the map that says which CRS, which resolution and what is
+   under the pointer. It lives inside the panel now, so it must not paint the
+   window colour across the bottom of it. */
+QWidget#CanvasInfoRow {
     background: transparent;
 }
 
@@ -707,6 +1110,52 @@ QWidget#OverlayPanel QCheckBox {
     background: transparent;
 }
 
+QWidget#OverlayPanel QWidget {
+    background: transparent;
+}
+
+/* The per-feature information panel, bottom right. Deliberately identical to
+   the Overlays panel on the opposite corner: both are small panes floating over
+   the map, and the outline is what lifts them off the raster behind. */
+QFrame#FeaturePanel {
+    background-color: #1b1f26;
+    border: 1px solid #333a44;
+    border-radius: 9px;
+}
+
+QFrame#FeaturePanel QWidget {
+    background: transparent;
+}
+
+/* The colour wheel opened by right-clicking a row in the Overlays panel. Same
+   pane, same outline, same reason: a real top-level popup is not guaranteed
+   to be repainted by the compositor over this window's own custom-drawn
+   frame, so this one lives inside the window like every other floating panel
+   here — see uiwidgets.cpp. */
+QFrame#ColourWheelPanel {
+    background-color: #1b1f26;
+    border: 1px solid #333a44;
+    border-radius: 10px;
+}
+
+QFrame#ColourWheelPanel QWidget {
+    background: transparent;
+}
+
+/* The bin for an imported vector. Quiet until the pointer is on it: the panel
+   is a legend first, and a row of buttons would read as the point of it. */
+QToolButton#OverlayRemove {
+    color: #69717b;
+    background: transparent;
+    border: none;
+    padding: 0px 2px;
+    font-size: 15px;
+}
+
+QToolButton#OverlayRemove:hover {
+    color: #e4e7ec;
+}
+
 /* ---------- Guide & About ---------- */
 
 QTextBrowser#GuideBrowser {
@@ -722,6 +1171,14 @@ QLabel#AboutTitle {
     font-weight: 700;
     letter-spacing: 3px;
     color: #eef1f5;
+}
+
+/* The Overview page's stand-in for the <h2> every other guide page opens
+   with — same teal as %H2% in the guide's own <style> block substitution. */
+QLabel#GuideOverviewTitle {
+    font-size: 22px;
+    font-weight: 700;
+    color: #a8d0c8;
 }
 
 QLabel#AboutBody {
@@ -816,11 +1273,163 @@ QMessageBox QLabel {
     color: #e4e7ec;
 }
 
+/* The GitHub link on the About page. Quiet until it is pointed at, like a link
+   rather than a command: the page is a colophon, not a form. Qualified with the
+   card, for the same reason as #SecondaryRunButton — "QFrame#Card QWidget" is
+   more specific than a bare object name and would otherwise win. */
+QPushButton#GithubButton,
+QFrame#Card QPushButton#GithubButton {
+    background: transparent;
+    border: 1px solid #333a44;
+    border-radius: 8px;
+    padding: 7px 16px;
+    color: #e4e7ec;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+QPushButton#GithubButton:hover,
+QFrame#Card QPushButton#GithubButton:hover {
+    background-color: #22272f;
+    border-color: #3f4753;
+}
+
+QPushButton#GithubButton:pressed,
+QFrame#Card QPushButton#GithubButton:pressed {
+    background-color: #1c2128;
+}
+
+/* ---------- Guide: the page list and the section list ----------
+   The Guide is a small site: pages on the left, the document in the middle,
+   the current page's sections on the right.
+
+   The selected row's background is deliberately NOT set here. GuideNav paints
+   it itself, sliding it from the old row to the new one — Qt stylesheets have
+   no transitions, so a rule here would make the selection jump instead. All
+   this sheet contributes to the current row is the text colour, which the
+   painted mark sits behind. */
+QListWidget#GuideSidebar {
+    background: transparent;
+    border: none;
+    border-right: 1px solid #262b33;
+    padding: 4px 8px 4px 0px;
+    outline: none;
+    font-size: 13px;
+}
+
+QListWidget#GuideSidebar::item {
+    padding: 9px 12px;
+    border: none;
+    color: #b6bec9;
+}
+
+QListWidget#GuideSidebar::item:hover {
+    color: #e4e7ec;
+}
+
+QListWidget#GuideSidebar::item:selected {
+    background: transparent;
+    color: #7ea8a0;
+    font-weight: 600;
+}
+
+/* The right-hand column. Quieter than the page list by a step: it is a way of
+   moving inside what you are already reading, not a way of choosing what to
+   read, and giving the two the same weight made the page look like it had two
+   navigations of equal importance.
+
+   The divider and the inset live on the panel now, not on the list inside
+   it, so the "On this page" caption sits under the same line and at the same
+   indent as the sections below it, instead of the list alone owning them. */
+QFrame#GuideTocPanel {
+    background: transparent;
+    border: none;
+    border-left: 1px solid #262b33;
+}
+
+QLabel#GuideTocTitle {
+    background: transparent;
+    color: #79818c;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1px;
+}
+
+QListWidget#GuideToc {
+    background: transparent;
+    border: none;
+    outline: none;
+    font-size: 12px;
+}
+
+QListWidget#GuideToc::item {
+    padding: 5px 8px;
+    border: none;
+    border-left: 2px solid transparent;
+    color: #79818c;
+}
+
+QListWidget#GuideToc::item:hover {
+    color: #e4e7ec;
+    border-left-color: #333a44;
+}
+
+QListWidget#GuideToc::item:selected {
+    background: transparent;
+    color: #7ea8a0;
+    border-left-color: #7ea8a0;
+}
+
+/* The Overview page's scroller and the widget inside it: both would otherwise
+   be caught by the generic "QMainWindow, QWidget" rule at the top of this
+   sheet and paint the window colour over the page. */
+QScrollArea#GuideOverviewScroll,
+QWidget#GuideOverviewHost {
+    background: transparent;
+    border: none;
+}
+
+/* ---------- Frameless dialog title bar ---------- */
+/* Every dialog built on FramelessDialog (see framelessdialog.cpp) carries
+   this row instead of a native title bar: a name and a single close button —
+   #WindowCloseButton, the same rule the main window's own close button uses,
+   a few sections down. Background transparent rather than a colour of its
+   own: the dialog underneath already carries the right one (#1b1f26, on
+   #ConfirmDialog and every dialog that reuses its shape), and repeating it
+   here would only risk the two drifting apart later. */
+QWidget#FramelessTitleBar {
+    background: transparent;
+    border-bottom: 1px solid #262b33;
+}
+
+QLabel#FramelessTitleLabel {
+    background: transparent;
+    color: #eef1f5;
+    font-size: 14px;
+    font-weight: 600;
+}
+
 /* ---------- Confirmation dialog (Yes/No) ---------- */
 
 /* Fixed-size, icon-free replacement for QMessageBox::question, so every
-   confirmation in the app is the same shape. See confirmdialog.cpp. */
-QDialog#ConfirmDialog {
+   confirmation in the app is the same shape. See confirmdialog.cpp.
+
+   Written twice on purpose. "QFrame#Card QWidget" up at the top of this sheet
+   clears the background of everything inside a card, and it outranks a plain
+   "QDialog#ConfirmDialog" — one id and two types against one id and one type.
+   A dialog is matched by it whenever its parent lives in a card, however much a
+   separate window it is, and a transparent top-level window renders black. The
+   second selector ties on specificity and, being further down the sheet, wins.
+   confirmdialog.cpp parents its dialogs to the window so this cannot arise; the
+   line stays as the guard for whatever gets written next.
+
+   Now inert in practice, like the equivalent rule on #AdvancedSettingsDialog
+   above: confirm(), notify() and choose() all build on FramelessDialog, whose
+   own paintEvent() paints this same colour directly rather than trust a
+   stylesheet to reach a frameless top-level widget. Left in place for the
+   same reason as there. */
+QDialog#ConfirmDialog,
+QWidget QDialog#ConfirmDialog {
     background-color: #1b1f26;
 }
 
@@ -830,11 +1439,71 @@ QLabel#ConfirmText {
     font-size: 14px;
 }
 
+/* ---- the report form ----
+   Its dialog, buttons and instruction reuse #ConfirmDialog, #ConfirmButton and
+   #ConfirmText; only the three pieces no confirmation has need rules of their
+   own. The writing area is given the same fill, border and focus colour as
+   every other input in the application, since that is what it is. */
+QPlainTextEdit#ReportBody {
+    background-color: #0f1216;
+    border: 1px solid #2a2f38;
+    border-radius: 8px;
+    padding: 8px 9px;
+    selection-background-color: #7ea8a0;
+    selection-color: #12211e;
+    color: #e4e7ec;
+    font-size: 13px;
+}
+
+QPlainTextEdit#ReportBody:focus {
+    border-color: #7ea8a0;
+}
+
+/* The strip of attached screenshots. Same fill and border as the writing area
+   above it, so the two read as one panel of things the user has provided. */
+QListWidget#ReportShots {
+    background-color: #0f1216;
+    border: 1px solid #2a2f38;
+    border-radius: 8px;
+    padding: 3px;
+}
+
+QListWidget#ReportShots::item {
+    border: 1px solid transparent;
+    border-radius: 6px;
+    margin: 2px;
+}
+
+/* Selection has to be visible: it is what Remove acts on. */
+QListWidget#ReportShots::item:selected {
+    border-color: #7ea8a0;
+    background-color: #1e2a28;
+}
+
+/* The field label and the line saying what travels with the report: secondary
+   text, deliberately quieter than what the user is writing. */
+QLabel#ReportMeta {
+    background: transparent;
+    color: #99a1ac;
+    font-size: 12px;
+}
+
+/* "Sending...", and why it failed. Empty most of the time, so it must not
+   reserve a coloured strip when it has nothing to say. */
+QLabel#ReportStatus {
+    background: transparent;
+    color: #cf9a9a;
+    font-size: 12px;
+}
+
+/* The horizontal padding is not decoration: with none, a button whose label is
+   a verb rather than "Yes" comes out exactly as wide as the text, and "Start
+   walkthrough" reads as a label someone drew a box around. */
 QPushButton#ConfirmButton {
     background-color: #22272f;
     border: 1px solid #333a44;
     border-radius: 8px;
-    padding: 9px 0px;
+    padding: 9px 20px;
     color: #e4e7ec;
 }
 
@@ -849,4 +1518,257 @@ QPushButton#ConfirmButton:pressed {
 
 QPushButton#ConfirmButton:default {
     border-color: #3f4753;
+}
+
+/* The filled answer, for the confirmations where one of the two is plainly the
+   better one (see confirmdialog.h). Restated for every state, and placed after
+   the rules above, because equal specificity in QSS is settled by which rule
+   comes last. */
+QPushButton#ConfirmButton[fill="accent"],
+QPushButton#ConfirmButton[fill="accent"]:default {
+    background-color: #7ea8a0;
+    border: 1px solid #7ea8a0;
+    color: #10201d;
+    font-weight: 600;
+}
+
+QPushButton#ConfirmButton[fill="accent"]:hover {
+    background-color: #93bcb3;
+    border-color: #93bcb3;
+}
+
+QPushButton#ConfirmButton[fill="accent"]:pressed {
+    background-color: #6b968f;
+    border-color: #6b968f;
+}
+
+/* The same mechanism again, for a button that has to read as destructive: the
+   report form's Cancel. #DangerButton would give it the right colour and the
+   wrong shape — that rule sets a fill and a border but no radius and no
+   padding, so it inherits both from the generic QPushButton rule and comes out
+   visibly unlike the Send button beside it. Going through #ConfirmButton keeps
+   every measurement identical and changes only the colour. */
+QPushButton#ConfirmButton[fill="danger"],
+QPushButton#ConfirmButton[fill="danger"]:default {
+    background-color: #e1281e;
+    border: 1px solid #e1281e;
+    color: #ffffff;
+    font-weight: 600;
+}
+
+QPushButton#ConfirmButton[fill="danger"]:hover {
+    background-color: #ef3b31;
+    border-color: #ef3b31;
+}
+
+QPushButton#ConfirmButton[fill="danger"]:pressed {
+    background-color: #8f1d17;
+    border-color: #8f1d17;
+}
+
+/* Unavailable, and it has to look it. A stylesheet that names a background and
+   a colour overrides what Qt would otherwise grey out by itself, so without
+   this a disabled button keeps its accent fill and reads as pressable while
+   doing nothing — which is how the report form's Send button looked before its
+   own state was styled. Both forms are listed: the accent rule above is more
+   specific than a bare :disabled, and in QSS the more specific rule wins. */
+QPushButton#ConfirmButton:disabled,
+QPushButton#ConfirmButton[fill="accent"]:disabled {
+    background-color: #22272f;
+    border: 1px solid #2a2f38;
+    color: #5c646e;
+    font-weight: 400;
+}
+
+/* The same property, for a button with no object name of its own: the OK of
+   the Viewer's export dialog, which comes out of a QDialogButtonBox. Written
+   without an id so it never competes with the rules above, and with its own
+   padding because a standard dialog button has none of the confirmation
+   dialog's fixed width to fall back on. */
+QPushButton[fill="accent"] {
+    background-color: #7ea8a0;
+    border: 1px solid #7ea8a0;
+    border-radius: 8px;
+    padding: 7px 22px;
+    color: #10201d;
+    font-weight: 600;
+}
+
+QPushButton[fill="accent"]:hover {
+    background-color: #93bcb3;
+    border-color: #93bcb3;
+}
+
+QPushButton[fill="accent"]:pressed {
+    background-color: #6b968f;
+    border-color: #6b968f;
+}
+
+/* ---------- Advanced settings dialog ----------
+   Behind the gear menu's "Advanced settings…" entry. Wider than the plain
+   Yes/No shape of #ConfirmDialog, so it gets an id and a sheet of its own
+   rather than reusing that one — see advancedsettingsdialog.h. Written twice
+   for the same reason as #ConfirmDialog above: "QFrame#Card QWidget" clears
+   the background of everything inside a card and would otherwise outrank a
+   bare "QDialog#AdvancedSettingsDialog" if this dialog is ever parented
+   somewhere a card can reach it.
+
+   Since both dialogs were rebuilt on FramelessDialog, neither rule below
+   actually paints anything any more — a stylesheet does not reliably reach a
+   frameless top-level widget (see the palette-rule note further down this
+   file), which is exactly why FramelessDialog::paintEvent() now fills the
+   same colour directly. Left in place regardless: it is what a future
+   QDialog reusing either id, built the old way, would still need. */
+QDialog#AdvancedSettingsDialog,
+QWidget QDialog#AdvancedSettingsDialog {
+    background-color: #1b1f26;
+}
+
+/* The sidebar list. Same fill as the header, so together they read as one
+   frame the pages sit inside rather than a panel floating over another.
+   Flush with the dialog's own left and bottom edges (see
+   advancedsettingsdialog.cpp) — border-bottom-left-radius keeps that fill
+   from squaring off the window's own rounded corner there. Same number as
+   FramelessDialog::kCornerRadius; the two have to move together. */
+QListWidget#AdvancedSettingsSidebar {
+    background-color: #14171c;
+    border: none;
+    border-right: 1px solid #262b33;
+    border-bottom-left-radius: 12px;
+    padding: 8px 0px;
+    outline: none;
+    font-size: 13px;
+}
+
+QListWidget#AdvancedSettingsSidebar::item {
+    padding: 10px 16px;
+    border: none;
+    color: #b6bec9;
+}
+
+QListWidget#AdvancedSettingsSidebar::item:hover {
+    background-color: #1c2128;
+}
+
+QListWidget#AdvancedSettingsSidebar::item:selected {
+    background-color: #1e2a28;
+    color: #7ea8a0;
+}
+
+QStackedWidget#AdvancedSettingsPages,
+QWidget#AdvancedSettingsPage {
+    background: transparent;
+}
+
+QLabel#AdvancedSettingsPageTitle {
+    background: transparent;
+    color: #eef1f5;
+    font-size: 15px;
+    font-weight: 600;
+}
+
+QLabel#AdvancedSettingsPageIntro {
+    background: transparent;
+    color: #b6bec9;
+    font-size: 13px;
+}
+
+/* The tick/status/"Set up…" row (see largepages.cpp) — otherwise an unnamed
+   QWidget, caught by the generic "QMainWindow, QWidget" rule at the very top
+   of this sheet and painted with the window's own background instead of the
+   page's. */
+QWidget#LargePagesOption {
+    background: transparent;
+}
+
+/* The scroll area a page sits in, and its viewport — the plain QWidget
+   QScrollArea makes for itself, one level above the page. Left unstyled it
+   paints the opaque generic background (see CanvasArea in theme.qss), which
+   here is the window colour rather than the dialog's own #1b1f26 and would
+   have shown as a mismatched patch behind the scrolled text. ">" reaches the
+   viewport specifically: the page itself is a grandchild, already
+   transparent through the rule above. */
+QScrollArea#AdvancedSettingsScroll {
+    background: transparent;
+    border: none;
+}
+
+QScrollArea#AdvancedSettingsScroll > QWidget {
+    background: transparent;
+}
+
+/* ---------- Batch processing table ----------
+   Every colour below already appears elsewhere in this sheet, so the palettes
+   in thememanager.cpp map the table for free — no new entry in kDarkColors,
+   and no risk of a cell staying dark on a light theme.
+
+   The selectors are qualified with the card, for the same reason as
+   #SecondaryRunButton above: "QFrame#Card QWidget" makes everything inside a
+   card transparent and would otherwise win over a bare "#BatchTable". */
+QFrame#Card QTableView#BatchTable {
+    background-color: #0f1216;
+    alternate-background-color: #0f1216;
+    border: 1px solid #2a2f38;
+    border-radius: 8px;
+    gridline-color: #282d36;
+    color: #e4e7ec;
+    selection-background-color: #1e2a28;
+    selection-color: #a8d0c8;
+}
+
+QFrame#Card QTableView#BatchTable::item {
+    padding: 2px 6px;
+    border: none;
+}
+
+QFrame#Card QTableView#BatchTable::item:selected {
+    background-color: #1e2a28;
+    color: #a8d0c8;
+}
+
+/* The header is a shade lighter than the cells, the way the cards sit above
+   the page background. */
+QFrame#Card QTableView#BatchTable QHeaderView::section {
+    background-color: #22272f;
+    color: #b6bec9;
+    border: none;
+    border-right: 1px solid #282d36;
+    border-bottom: 1px solid #282d36;
+    padding: 6px 8px;
+    font-size: 13px;
+}
+
+QFrame#Card QTableView#BatchTable QHeaderView::section:vertical {
+    color: #69717b;
+    border-right: 1px solid #282d36;
+}
+
+QFrame#Card QTableView#BatchTable QTableCornerButton::section {
+    background-color: #22272f;
+    border: none;
+    border-right: 1px solid #282d36;
+    border-bottom: 1px solid #282d36;
+}
+
+/* The editors opened inside a cell: no rounded corners or padding here, or
+   they would not line up with the cell they replace. */
+QFrame#Card QTableView#BatchTable QLineEdit,
+QFrame#Card QTableView#BatchTable QSpinBox,
+QFrame#Card QTableView#BatchTable QComboBox {
+    border-radius: 0;
+    padding: 2px 4px;
+    background-color: #0f1216;
+    border: 1px solid #7ea8a0;
+}
+
+QFrame#Card QTableView#BatchTable QToolButton {
+    background-color: #22272f;
+    border: 1px solid #333a44;
+    border-radius: 4px;
+    color: #e4e7ec;
+    padding: 0px 6px;
+}
+
+QFrame#Card QTableView#BatchTable QToolButton:hover {
+    background-color: #272d36;
 }

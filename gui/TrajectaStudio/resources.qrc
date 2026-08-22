@@ -4,6 +4,13 @@
         <file>assets/logo.png</file>
         <file>assets/arrow_up.svg</file>
         <file>assets/arrow_down.svg</file>
+        <!-- GitHub's own mark, used for what it is meant for: a link to
+             GitHub. Solid black, and recoloured at load time to whatever the
+             active theme's text colour is. -->
+        <file>assets/github.svg</file>
+        <!-- The ORCID iD mark, beside the GitHub one on the About screen. This
+             one keeps its own green: the colour is part of the mark. -->
+        <file>assets/orcid.svg</file>
         <file>assets/trajecta.ico</file>
         <file>assets/background/japanese_art.jpg</file>
         <file>assets/guide/Grid_FETE.jpg</file>
@@ -12,5 +19,12 @@
         <file>assets/guide/LCPA.jpg</file>
         <file>assets/guide/FETE_density.jpg</file>
         <file>assets/guide/FETE_density_NNI.jpg</file>
+        <!-- The two layers the walkthrough shows in the Viewer. Inside the
+             executable rather than installed as files: they are then part of
+             the installation without touching the packaging, they cannot be
+             deleted or edited by accident, and the tour can extract them to a
+             temporary folder as often as it is run. -->
+        <file>assets/tour/sample_dem.tif</file>
+        <file>assets/tour/sample_points.geojson</file>
     </qresource>
 </RCC>

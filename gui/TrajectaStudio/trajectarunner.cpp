@@ -101,6 +101,8 @@ void TrajectaRunner::buildRules()
         [this] { return QString::number(m_params.maxRamMb); });
     add("Use large memory pages",
         [this] { return m_params.largePages ? QStringLiteral("yes") : QStringLiteral("no"); });
+    add("Write a run manifest",
+        [this] { return m_params.writeManifest ? QStringLiteral("yes") : QStringLiteral("no"); });
 
     // --- Input data ---
     add("Enter path to DEM file",
@@ -154,24 +156,42 @@ void TrajectaRunner::buildRules()
         [this] { return QString::number(m_params.interpThreshold); });
     add("sample spacing",
         [this] { return QString::number(m_params.interpSampleSpacing); });
+    // Only asked when the spacing is above 1, so an unconditional rule is safe:
+    // a rule that never matches costs nothing.
+    add("Preserve local peaks",
+        [this] { return m_params.interpPreservePeaks ? QStringLiteral("yes")
+                                                     : QStringLiteral("no"); });
     add("maximum search radius",
         [this] { return QString::number(m_params.interpMaxRadius); });
     add("Enter interpolated raster filename",
         [this] { return m_params.interpOutputName; });
 
     // --- Algorithm ---
+    // Anything that is not one of the five presets goes through the engine's
+    // "Custom" entry, which then asks for the number itself — the rule below.
     add("Select number of neighbours", [this] {
         switch (m_params.neighbours) {
         case 8:  return QStringLiteral("1");
         case 24: return QStringLiteral("3");
         case 32: return QStringLiteral("4");
         case 64: return QStringLiteral("5");
-        case 16:
-        default: return QStringLiteral("2");
+        case 16: return QStringLiteral("2");
+        default: return QStringLiteral("6");
         }
     });
+    add("Enter the number of directions",
+        [this] { return QString::number(m_params.neighbours); });
     add("Select cost function",
         [this] { return QString::number(m_params.costFunction); });
+    // The engine asks for the cut-off right after the cost function, and only
+    // asks for the two angles once the answer here is yes.
+    add("Refuse moves steeper than a limit",
+        [this] { return m_params.slopeCutoffEnabled ? QStringLiteral("yes")
+                                                    : QStringLiteral("no"); });
+    add("Maximum uphill slope",
+        [this] { return QString::number(m_params.maxSlopeUpDeg); });
+    add("Maximum downhill slope",
+        [this] { return QString::number(m_params.maxSlopeDownDeg); });
     add("for path smoothing",
         [this] { return QString::number(m_params.smoothingBufferRadius); });
 
@@ -183,6 +203,15 @@ void TrajectaRunner::buildRules()
     add("Enter output density raster filename", [this] { return m_params.densityName; });
     add("Enter path raster filename", [this] { return m_params.pathRasterName; });
     add("Enter path lines shapefile filename", [this] { return m_params.pathLinesName; });
+    // Asked straight after the path lines; the width and the name follow
+    // only when the answer is yes.
+    add("Also compute the cost corridor",
+        [this] { return m_params.costCorridor ? QStringLiteral("yes")
+                                              : QStringLiteral("no"); });
+    add("Corridor width, as a percentage",
+        [this] { return QString::number(m_params.corridorWidthPercent, 'f', 1); });
+    add("Enter cost corridor raster filename",
+        [this] { return m_params.corridorName; });
 
     // --- Session end: run once, then quit cleanly ---
     add("Run another", [] { return QStringLiteral("no"); });
@@ -218,7 +247,7 @@ void TrajectaRunner::start(const Parameters &params)
     QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
     if (!m_params.gdalBinDir.isEmpty()) {
         env.insert(QStringLiteral("PATH"),
-                   QDir::toNativeSeparators(m_params.gdalBinDir) + QLatin1Char(';')
+                   QDir::toNativeSeparators(m_params.gdalBinDir) + QDir::listSeparator()
                        + env.value(QStringLiteral("PATH")));
     }
     // PROJ/GDAL need their data files (proj.db, coordinate tables). Export the
@@ -238,6 +267,22 @@ void TrajectaRunner::start(const Parameters &params)
         && env.value(QStringLiteral("GDAL_DATA")).isEmpty()) {
         env.insert(QStringLiteral("GDAL_DATA"),
                    QDir::toNativeSeparators(m_params.gdalDataDir));
+    }
+    // Checkpointing. The engine treats an absent TRAJECTA_CHECKPOINT_DIR as
+    // "off", so these are only ever set when the user asked for them — and
+    // removed explicitly, because the parent's own environment is inherited.
+    env.remove(QStringLiteral("TRAJECTA_CHECKPOINT_DIR"));
+    env.remove(QStringLiteral("TRAJECTA_CHECKPOINT_MINUTES"));
+    env.remove(QStringLiteral("TRAJECTA_RESUME"));
+    if (m_params.checkpointEnabled && !m_params.checkpointDir.isEmpty()) {
+        env.insert(QStringLiteral("TRAJECTA_CHECKPOINT_DIR"),
+                   QDir::toNativeSeparators(m_params.checkpointDir));
+        env.insert(QStringLiteral("TRAJECTA_CHECKPOINT_MINUTES"),
+                   QString::number(qMax(0.001, m_params.checkpointMinutes)));
+    }
+    if (!m_params.resumeCheckpoint.isEmpty()) {
+        env.insert(QStringLiteral("TRAJECTA_RESUME"),
+                   QDir::toNativeSeparators(m_params.resumeCheckpoint));
     }
     m_process->setProcessEnvironment(env);
 

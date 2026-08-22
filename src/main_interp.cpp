@@ -41,7 +41,10 @@ void print_green_success(const std::string& success);
 void center_text(const std::string& text, int width);
 bool check_exit_command(std::string& input);
 void safe_getline(std::string& s);
-void print_progress(int current, int total, double elapsed_sec, int bar_width);
+// Defined in main_fete.cpp. The last parameter is what a resumed FETE run
+// inherited from its checkpoint; interpolation never resumes, so it stays 0.
+void print_progress(int current, int total, double elapsed_sec, int bar_width,
+                    int done_before);
 bool write_gtiff_raster(const std::string& path, int ncols, int nrows,
     const double gt[6], const char* wkt, void* data, GDALDataType dtype,
     const double* nodata = nullptr);
@@ -322,6 +325,7 @@ int run_interp_mode() {
         // interpolate (every sample keeps its value): the spacing subsamples
         // the raster on a regular grid so the surface is generalized.
         int spacing = 1;
+        bool preserve_maxima = false;
         std::vector<uint8_t> is_sample(N, 0);
         size_t n_samples = 0;
         while (true) {
@@ -351,6 +355,36 @@ int run_interp_mode() {
                 spacing = 1;
             }
 
+            // Only worth asking once there is subsampling to lose peaks to.
+            if (spacing > 1) {
+                while (true) {
+                    print_question("\nPreserve local peaks? (yes/no):\n");
+                    std::cout << "  Also keeps, in every " << spacing << "x" << spacing
+                              << " block, the cell that holds the block's highest\n";
+                    std::cout << "  value, so intense junctions survive the subsampling.\n";
+                    std::cout << "  "; print_default("Default: no"); std::cout << "\n";
+                    std::cout << "> ";
+                    std::string pk;
+                    safe_getline(pk);
+                    if (check_exit_command(pk)) return 0;
+                    if (interp_help(pk, "A regular grid keeps whichever cell happens to sit on\n"
+                                        "it, which on a thin, spiky input is rarely the\n"
+                                        "interesting one. This adds the real maximum of each\n"
+                                        "block: at most one extra sample per block.")) continue;
+                    if (pk.empty() || pk == "no" || pk == "n" || pk == "NO" || pk == "No") {
+                        preserve_maxima = false;
+                        break;
+                    }
+                    if (pk == "yes" || pk == "y" || pk == "YES" || pk == "Yes") {
+                        preserve_maxima = true;
+                        break;
+                    }
+                    std::cout << "ERROR: Please enter 'yes' or 'no'\n";
+                }
+            } else {
+                preserve_maxima = false;
+            }
+
             n_samples = 0;
             size_t n_valid = 0;
             for (int r = 0; r < nrows; ++r) {
@@ -362,6 +396,39 @@ int run_interp_mode() {
                                     && value[i] >= (float)min_threshold) ? 1 : 0;
                     if (is_sample[i]) ++n_samples;
                 }
+            }
+
+            // Peak preservation. A regular grid keeps whichever cell happens to
+            // sit on it, which on a thin, spiky input like a FETE density is
+            // rarely the interesting one: the junctions are exactly the cells
+            // that get dropped, and the surface loses its highest values
+            // altogether. This adds, per spacing x spacing block, the cell that
+            // actually holds the block's maximum. At most one sample per block,
+            // and nothing at all when spacing is 1.
+            if (preserve_maxima && spacing > 1) {
+                size_t added = 0;
+                for (int r0 = 0; r0 < nrows; r0 += spacing) {
+                    for (int c0 = 0; c0 < ncols; c0 += spacing) {
+                        const int r1 = std::min(r0 + spacing, nrows);
+                        const int c1 = std::min(c0 + spacing, ncols);
+                        float best = -std::numeric_limits<float>::max();
+                        size_t best_i = (size_t)-1;
+                        for (int r = r0; r < r1; ++r) {
+                            for (int c = c0; c < c1; ++c) {
+                                const size_t i = (size_t)r * ncols + c;
+                                if (has_nodata && value[i] == (float)nodata) continue;
+                                if (value[i] > best) { best = value[i]; best_i = i; }
+                            }
+                        }
+                        if (best_i != (size_t)-1 && best >= (float)min_threshold
+                            && !is_sample[best_i]) {
+                            is_sample[best_i] = 1;
+                            ++n_samples;
+                            ++added;
+                        }
+                    }
+                }
+                std::cout << "Peak preservation added " << added << " sample cell(s)\n";
             }
             if (n_samples < 3) {
                 std::cout << "ERROR: Only " << n_samples << " cells qualify as samples "
@@ -433,6 +500,7 @@ int run_interp_mode() {
         std::cout << "  Output directory: " << out_dir << "\n";
         std::cout << "  Sample threshold: >= " << min_threshold << " (" << n_samples << " cells)\n";
         std::cout << "  Sample spacing: every " << spacing << " cell(s)\n";
+        std::cout << "  Peak preservation: " << (preserve_maxima ? "on" : "off") << "\n";
         std::cout << "  Max search radius: " << (max_radius > 0 ? std::to_string(max_radius) + " cells" : std::string("unlimited")) << "\n";
         std::cout << "  Output filename: " << output_name << ".tif\n";
         std::cout << "  Max threads: " << max_threads << "\n";
@@ -493,11 +561,11 @@ int run_interp_mode() {
                 if (rows_done % 8 == 0 || rows_done == nrows) {
                     const double elapsed = std::chrono::duration<double>(
                         std::chrono::high_resolution_clock::now() - t_start).count();
-                    print_progress(rows_done, nrows, elapsed, 40);
+                    print_progress(rows_done, nrows, elapsed, 40, 0);
                 }
             }
         }
-        print_progress(nrows, nrows, -1.0, 40);
+        print_progress(nrows, nrows, -1.0, 40, 0);
         std::cout << "\n";
 
         // ===== STEP 3: finalize & write =====

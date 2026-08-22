@@ -33,6 +33,12 @@ public:
         // shape — radii, weights, letter spacing, type. Only the themes that
         // need it set this; the colour map alone cannot express a "style".
         QString extraQss;
+        // The map canvas is paper over the artwork rather than a solid slab.
+        // Only meaningful on a theme that has something behind it to show, and
+        // it is not free: a canvas that does not paint its own background makes
+        // every repaint go up to the window's picture first. Set it for the
+        // themes where the look is worth that, and nowhere else.
+        bool translucentCanvas = false;
     };
 
     static const QVector<Theme> &themes();
@@ -72,4 +78,12 @@ public:
     // console, the map canvas, the status line, the Guide's own <style> block.
     static QColor mapped(const char *darkHex);
     static bool isLight();
+
+    // Corner radius of QFrame#Card under the active theme, in device-independent
+    // pixels. The walkthrough needs it: a lit card has to be cut out in the
+    // card's own shape, and two themes restate that radius in their shape
+    // overrides. Mirrors theme.qss and the extraQss blocks in thememanager.cpp
+    // — the one number in this file that is written down twice, because QSS
+    // cannot be queried back.
+    static int cardRadius();
 };

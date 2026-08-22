@@ -3,12 +3,12 @@
 #include <QAbstractItemView>
 #include <QFrame>
 #include <QGuiApplication>
-#include <QLayout>
 #include <QPainter>
 #include <QPainterPath>
 #include <QPropertyAnimation>
 #include <QScreen>
 #include <QStyleOptionComboBox>
+#include <QWheelEvent>
 
 namespace {
 
@@ -18,7 +18,6 @@ constexpr int kArrowZoneWidth = 26;
 constexpr qreal kArrowHalfWidth = 4.5;
 constexpr qreal kArrowHeight = 3.0;
 constexpr int kArrowDurationMs = 170;
-constexpr int kPopupDurationMs = 130;
 constexpr int kPopupGap = 4;      // breathing room between field and list
 // Must track the border-radius on QComboBox QAbstractItemView in theme.qss.
 constexpr int kPopupRadius = 8;
@@ -60,10 +59,14 @@ void SmoothComboBox::animateArrowTo(qreal angle)
 // paints its own square panel around the view. That panel is what shows through
 // at the corners as a square menu sitting under the rounded one, so it is taken
 // off here. The rounding itself is done by masking the container in showPopup()
-// — a shaped window, not a translucent one: WA_TranslucentBackground would make
-// this a layered window, which composites differently and would put the popup
-// on a slower paint path for no gain, since the mask already discards every
-// pixel outside the rounded rect.
+// — a shaped window, and deliberately not a translucent one.
+//
+// WA_TranslucentBackground was tried, to be rid of the container's silhouette
+// on the platforms where the mask is not honoured. It cost the popup its
+// background entirely: the list came up black on every theme, which only
+// showed on the light ones, where black on black had been passing for correct.
+// A popup that cannot be read is a far worse fault than a square corner, so
+// the container stays an ordinary opaque window and the mask does the shaping.
 void SmoothComboBox::preparePopupChrome()
 {
     if (m_popupChromeReady)
@@ -146,24 +149,26 @@ void SmoothComboBox::showPopup()
         popup->setMask(QRegion(rounded.toFillPolygon().toPolygon()));
     }
 
-    // The list appears at its full size and fades in. Animating the height
-    // instead would make Qt re-evaluate the container on every frame: at one
-    // pixel tall it decides it needs its scroller arrows, and those arrows go
-    // on to steal the height that would have made them unnecessary — leaving
+    // The list appears at its full size, without a fade. A window opacity is
+    // what makes a window *layered* on Windows, and a layered window ignores
+    // the mask above — which is how the square corners this whole function
+    // exists to remove came back. Two frames of fade are not worth them.
+    //
+    // Animating the height was the other candidate and is worse: at one pixel
+    // tall Qt decides the container needs its scroller arrows, and those arrows
+    // go on to steal the height that would have made them unnecessary, leaving
     // the last row clipped for good.
-    popup->setWindowOpacity(0.0);
-    auto *fade = new QPropertyAnimation(popup, "windowOpacity", popup);
-    fade->setDuration(kPopupDurationMs);
-    fade->setEasingCurve(QEasingCurve::OutCubic);
-    fade->setStartValue(0.0);
-    fade->setEndValue(1.0);
-    fade->start(QAbstractAnimation::DeleteWhenStopped);
 }
 
 void SmoothComboBox::hidePopup()
 {
     QComboBox::hidePopup();
     animateArrowTo(0.0);
+}
+
+void SmoothComboBox::wheelEvent(QWheelEvent *event)
+{
+    event->ignore();
 }
 
 void SmoothComboBox::paintEvent(QPaintEvent *event)

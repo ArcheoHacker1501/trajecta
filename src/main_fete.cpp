@@ -29,10 +29,21 @@
 #include "gdal_priv.h"
 #include "ogrsf_frmts.h"
 
-namespace fs = std::filesystem; 
+#include "checkpoint.h"
+#include "manifest.h"
+#include "neighbourhood.h"   // defines Off and builds the offset tables
+#include "costfunctions.h"   // the cost models and the slope cut-off
+
+namespace fs = std::filesystem;
 
 // ========== GLOBAL SETTINGS ==========
 bool g_verbose_mode = false;  // Global flag for verbose/debug output
+
+// Whether every run writes a manifest next to its results. On by default: the
+// record costs a few seconds of hashing on a run measured in hours, and the
+// analysis it describes usually outlives the memory of how it was made.
+// Shared with main_lcpa.cpp, which asks the same question.
+bool g_write_manifest = true;
 
 // ========== LARGE MEMORY PAGES ==========
 //
@@ -185,7 +196,7 @@ inline void debug_print(const std::string& msg) {
 // ========== HELP TEXT ==========
 const char* HELP_TEXT = R"(
 ===============================================================================
-                             TRAJECTA v1.0.0
+                             TRAJECTA v1.0.1
                   A SPATIAL MOVEMENT ANALYSIS SOFTWARE
                        Developed by Stefano Apra'
               Institute for the Study of the Ancient World
@@ -297,8 +308,6 @@ struct FETEOutput {
     double time_seconds;
     bool was_cancelled;
 };
-
-struct Off { int dr; int dc; };
 
 // ========== UTILITY FUNCTIONS ==========
 
@@ -651,7 +660,14 @@ static void save_perf_csv(const std::string& path, const std::vector<PerfSample>
 
 // Unicode progress bar with percentage, counter, throughput and ETA.
 // Pass elapsed_sec < 0 when no timing information is available.
-void print_progress(int current, int total, double elapsed_sec = -1.0, int bar_width = 40) {
+//
+// `done_before` is what a resumed run inherited from its checkpoint. The bar
+// and the counter still describe the whole analysis — that is what the user
+// wants to see — but the rate and the ETA are computed from the work this
+// process has actually done, or a run resumed at 90% would claim to be
+// finishing in two seconds.
+void print_progress(int current, int total, double elapsed_sec = -1.0, int bar_width = 40,
+                    int done_before = 0) {
     if (total <= 0) return;
     double frac = (double)current / (double)total;
     if (frac < 0.0) frac = 0.0;
@@ -679,8 +695,9 @@ void print_progress(int current, int total, double elapsed_sec = -1.0, int bar_w
     for (int i = drawn; i < bar_width; ++i) out << EMPTY;
     out << "\033[0m " << current << "/" << total;
 
-    if (elapsed_sec > 0.0 && current > 0 && current < total) {
-        double rate = current / elapsed_sec;
+    const int done_here = current - done_before;
+    if (elapsed_sec > 0.0 && done_here > 0 && current < total) {
+        double rate = done_here / elapsed_sec;
         double eta = (total - current) / std::max(rate, 1e-9);
         char tail[80];
         if (eta >= 3600.0) {
@@ -1597,44 +1614,17 @@ int run_points_mode() {
 static inline int idx(int r, int c, int ncols) { return r * ncols + c; }
 static inline void idx2coord(int index, int ncols, int& r, int& c) { r = index / ncols; c = index % ncols; }
 
-static const Off OFFS_8[8] = { {-1,-1},{-1,0},{-1,1},{0,-1},{0,1},{1,-1},{1,0},{1,1} };
-static const Off OFFS_16[16] = { {-1,-1},{-1,0},{-1,1},{0,-1},{0,1},{1,-1},{1,0},{1,1}, {-2,-1},{-2,1},{-1,-2},{-1,2},{1,-2},{1,2},{2,-1},{2,1} };
-static const Off OFFS_24[24] = { {-1,-1},{-1,0},{-1,1},{0,-1},{0,1},{1,-1},{1,0},{1,1}, {-2,-2},{-2,-1},{-2,0},{-2,1},{-2,2},{0,-2},{0,2}, {2,-2},{2,-1},{2,0},{2,1},{2,2}, {-1,-2},{-1,2},{1,-2},{1,2} };
-static const Off OFFS_32[32] = { {-1,-1},{-1,0},{-1,1},{0,-1},{0,1},{1,-1},{1,0},{1,1}, {-2,-1},{-2,1},{-1,-2},{-1,2},{1,-2},{1,2},{2,-1},{2,1}, {-2,-2},{-2,0},{-2,2},{0,-2},{0,2},{2,-2},{2,0},{2,2}, {-3,-1},{-3,1},{-1,-3},{-1,3},{1,-3},{1,3},{3,-1},{3,1} };
-static const Off OFFS_64[64] = { {-1,-1},{-1,0},{-1,1},{0,-1},{0,1},{1,-1},{1,0},{1,1}, {-2,-1},{-2,1},{-1,-2},{-1,2},{1,-2},{1,2},{2,-1},{2,1}, {-2,-2},{-2,0},{-2,2},{0,-2},{0,2},{2,-2},{2,0},{2,2}, {-3,-1},{-3,1},{-1,-3},{-1,3},{1,-3},{1,3},{3,-1},{3,1}, {-3,-2},{-3,0},{-3,2},{-2,-3},{-2,3},{0,-3},{0,3},{2,-3},{2,3},{3,-2},{3,0},{3,2}, {-3,-3},{-3,3},{3,-3},{3,3} };
+// The offset tables are built at run time by neighbourhood::build(). Up to
+// v1.0.1 they were five hand-written arrays; 8, 16, 24 and 32 are unchanged,
+// but OFFS_64 declared sixty-four entries and listed only forty-eight, so the
+// last sixteen were {0,0} — a move onto the cell itself, with dh = 0. That
+// made every cost function return NaN, and since the cost surface is the mean
+// over the neighbours, the whole cost raster came out NaN whenever 64 was
+// chosen. The generator cannot make that mistake: it counts what it emits.
 
 // ========== COST FUNCTIONS ==========
-enum CostFunctionType { TOBLER_WHITE_2015 = 1, MARQUEZ_PEREZ_ET_AL_2017 = 2, IRMISCHER_CLARKE_2017 = 3 };
-
-static inline float tobler_white_2015(double dh_m, double dz_m) {
-    const double sf = dz_m / dh_m;
-    const double speed_kmh = 6.0 * std::exp(-3.5 * std::abs(sf + 0.05));
-    const double safe_speed = std::max(speed_kmh, 1e-12);
-    return (float)((dh_m / 1000.0) / safe_speed);
-}
-
-static inline float marquez_perez_et_al_2017(double dh_m, double dz_m) {
-    const double sf = dz_m / dh_m;
-    const double speed_kmh = 4.8 * std::exp(-5.3 * std::abs((sf * 0.7) + 0.03));
-    const double safe_speed = std::max(speed_kmh, 1e-12);
-    return (float)((dh_m / 1000.0) / safe_speed);
-}
-
-static inline float irmischer_clarke_2017(double dh_m, double dz_m) {
-    const double sf = (dz_m / dh_m) * 100.0;
-    const double speed_ms  = 0.11 + std::exp(-(sf + 5.0) * (sf + 5.0) / 1800.0);
-    const double speed_kmh = speed_ms * 3.6;
-    const double safe_speed = std::max(speed_kmh, 1e-12);
-    return (float)((dh_m / 1000.0) / safe_speed);
-}
-
-static inline float apply_cost_function(CostFunctionType cf, double dh_m, double dz_m) {
-    switch (cf) {
-        case MARQUEZ_PEREZ_ET_AL_2017: return marquez_perez_et_al_2017(dh_m, dz_m);
-        case IRMISCHER_CLARKE_2017: return irmischer_clarke_2017(dh_m, dz_m);
-        default:                       return tobler_white_2015(dh_m, dz_m);
-    }
-}
+// Defined in costfunctions.h, included at the top of this file and shared
+// with LCPA so the two modes cannot price the same move differently.
 
 static inline bool world_to_pixel_northup(double x, double y, const double gt[6], int& col, int& row) {
     if (std::abs(gt[2]) > 1e-12 || std::abs(gt[4]) > 1e-12) return false;
@@ -1911,6 +1901,108 @@ std::vector<float> rasterize_polylines_with_costs(
     return cost_raster;
 }
 
+// Asks for a neighbourhood size by hand. Shared with LCPA, which declares it.
+// Returns false only when the user typed 'exit'.
+bool ask_custom_neighbours(int& num_neighbours) {
+    const std::vector<int> sizes = neighbourhood::admissibleSizes();
+    while (true) {
+        print_question("\nEnter the number of directions (neighbours):\n");
+        std::cout << "  A neighbourhood has to look the same in every compass direction,\n";
+        std::cout << "  so the directions come in whole symmetric groups and only certain\n";
+        std::cout << "  totals exist. Admissible values from " << neighbourhood::kMin
+                  << " to " << neighbourhood::kMax << ":\n    ";
+        for (size_t i = 0; i < sizes.size(); ++i) {
+            std::cout << sizes[i] << (i + 1 < sizes.size() ? ", " : "\n");
+        }
+        std::cout << "  Anything in between is rounded down to the value below it.\n";
+        std::cout << "  Cost per cell grows in proportion to this number; the gain in\n";
+        std::cout << "  path accuracy does not. 8 -> 16 removes most of the zig-zag,\n";
+        std::cout << "  16 -> 32 refines the diagonals, past 48 the change is hard to see.\n";
+        std::cout << "  "; print_default("Leave blank for 16"); std::cout << "\n";
+        std::cout << "> ";
+        std::string input;
+        safe_getline(input);
+        if (check_exit_command(input)) return false;
+        if (check_help_command(input)) continue;
+        if (input.empty()) { num_neighbours = 16; return true; }
+        int wanted = 0;
+        try {
+            wanted = std::stoi(input);
+        } catch (...) {
+            std::cout << "ERROR: Enter a whole number\n";
+            continue;
+        }
+        if (wanted < neighbourhood::kMin) {
+            std::cout << "ERROR: Fewer than " << neighbourhood::kMin
+                      << " directions leaves a path unable to move diagonally\n";
+            continue;
+        }
+        if (wanted > neighbourhood::kMax) {
+            std::cout << "ERROR: More than " << neighbourhood::kMax
+                      << " directions costs far more than it is worth\n";
+            continue;
+        }
+        num_neighbours = neighbourhood::snap(wanted);
+        if (num_neighbours != wanted) {
+            std::cout << "  " << wanted << " is not an admissible total; using "
+                      << num_neighbours << ".\n";
+        }
+        return true;
+    }
+}
+
+// Asks whether moves above a given steepness should be refused, and how steep.
+// Shared with LCPA, which declares it. Returns false only on 'exit'.
+bool ask_slope_limit(bool& enabled, double& up_deg, double& down_deg) {
+    while (true) {
+        print_question("\nRefuse moves steeper than a limit? (yes/no):\n");
+        std::cout << "  Beyond the limit a move is impossible, so a slope no walker\n";
+        std::cout << "  would take is excluded instead of merely being expensive.\n";
+        std::cout << "  Uphill and downhill are set separately.\n";
+        std::cout << "  "; print_default("Default: no (every slope is passable)"); std::cout << "\n";
+        std::cout << "> ";
+        std::string input;
+        safe_getline(input);
+        if (check_exit_command(input)) return false;
+        if (check_help_command(input)) continue;
+        const std::string a = to_lower_copy(ltrim_copy(input));
+        if (a.empty() || a == "no" || a == "n") { enabled = false; return true; }
+        if (a != "yes" && a != "y") {
+            std::cout << "ERROR: Please enter 'yes' or 'no'\n";
+            continue;
+        }
+        enabled = true;
+        break;
+    }
+
+    const auto ask_angle = [](const char* what, double& out) -> bool {
+        while (true) {
+            print_question(std::string("\nMaximum ") + what + " slope, in degrees (1-89):\n");
+            std::cout << "  "; print_default("Default: 30"); std::cout << "\n";
+            std::cout << "> ";
+            std::string input;
+            safe_getline(input);
+            if (check_exit_command(input)) return false;
+            if (check_help_command(input)) continue;
+            if (input.empty()) { out = 30.0; return true; }
+            try {
+                const double v = std::stod(input);
+                if (v < 1.0 || v > 89.0) {
+                    std::cout << "ERROR: Enter an angle between 1 and 89 degrees\n";
+                    continue;
+                }
+                out = v;
+                return true;
+            } catch (...) {
+                std::cout << "ERROR: Invalid number\n";
+            }
+        }
+    };
+    if (!ask_angle("uphill", up_deg)) return false;
+    if (!ask_angle("downhill", down_deg)) return false;
+    return true;
+}
+
 // ========== MAIN FETE ALGORITHM ==========
 
 FETEOutput run_fete(const std::string& dem_path, const std::string& pts_path, const std::string& out_dir,
@@ -1920,9 +2012,13 @@ FETEOutput run_fete(const std::string& dem_path, const std::string& pts_path, co
     const std::string& cost_modifiers_path = "", int polyline_buffer_radius = 0,
     const std::string& cost_raster_path = "",
     const std::string& additional_cost_filename = "", const std::string& total_cost_filename = "",
-    double barrier_threshold = 1000.0) {
+    double barrier_threshold = 1000.0,
+    bool slope_limit_enabled = false,
+    double max_slope_up_deg = 90.0, double max_slope_down_deg = 90.0) {
 
     FETEOutput output = { false, "", "", "", "", "", 0, 0, 0, 0, 0, 0.0, false };
+    const SlopeLimit slope_limit =
+        make_slope_limit(slope_limit_enabled, max_slope_up_deg, max_slope_down_deg);
     auto global_start = std::chrono::high_resolution_clock::now();
 
     // Ensure the output directory exists: GDAL Create returns null otherwise
@@ -1942,16 +2038,13 @@ FETEOutput run_fete(const std::string& dem_path, const std::string& pts_path, co
     std::vector<float> dem;
     GDALDataset* dem_ds = nullptr;
 
-    const Off* current_offs = OFFS_16;
-    int num_offs = 16;
-
-    switch (num_neighbours) {
-    case 8:  current_offs = OFFS_8;  num_offs = 8;  break;
-    case 16: current_offs = OFFS_16; num_offs = 16; break;
-    case 24: current_offs = OFFS_24; num_offs = 24; break;
-    case 32: current_offs = OFFS_32; num_offs = 32; break;
-    case 64: current_offs = OFFS_64; num_offs = 64; break;
-    default: current_offs = OFFS_16; num_offs = 16; break;
+    std::vector<Off> offs_storage;
+    const int num_offs = neighbourhood::build(num_neighbours, offs_storage);
+    const Off* current_offs = offs_storage.data();
+    if (num_offs != num_neighbours) {
+        std::cout << "NOTE: " << num_neighbours << " is not an admissible neighbourhood size; "
+                  << "using " << num_offs << " directions.\n";
+        num_neighbours = num_offs;   // so the summary and the manifest agree
     }
 
     std::cout << "Reading DEM...\n";
@@ -2029,11 +2122,31 @@ FETEOutput run_fete(const std::string& dem_path, const std::string& pts_path, co
     int64_t bytes_dijkstra = 17LL * N + 23LL * N * max_threads;
     int64_t estimated_ram = std::max(bytes_shared_peak, bytes_dijkstra) / (1024 * 1024);
     if (estimated_ram > max_ram_mb) {
-        std::cout << "ERROR: Estimated peak memory use is ~" << estimated_ram << " MB with "
-                  << max_threads << " threads, but max allowed is " << max_ram_mb << " MB\n";
-        std::cout << "       Reduce the number of CPU threads or increase the RAM limit.\n";
-        GDALClose(dem_ds);
-        return output;
+        // The ceiling is what the user asked for; the thread count is only the
+        // means of staying under it. A run that eleven threads could do
+        // perfectly well should not be refused because sixteen were requested,
+        // so the threads are fitted to the budget and the change is reported.
+        // Everything else in this phase scales with the DEM alone, so if even
+        // a single thread does not fit, nothing can be done here.
+        const int64_t budget = max_ram_mb * 1024LL * 1024LL;
+        const int64_t per_thread = 23LL * N;
+        const int64_t fits = (budget - 17LL * N) / std::max<int64_t>(1, per_thread);
+        if (bytes_shared_peak > budget || fits < 1) {
+            std::cout << "ERROR: Estimated peak memory use is ~" << estimated_ram << " MB with "
+                      << max_threads << " threads, but max allowed is " << max_ram_mb << " MB\n";
+            std::cout << "       This DEM does not fit in that budget even with one thread.\n";
+            std::cout << "       Raise the RAM limit, or use a smaller or coarser DEM.\n";
+            GDALClose(dem_ds);
+            return output;
+        }
+        const int reduced = (int)std::min<int64_t>(fits, max_threads);
+        std::cout << "NOTE: " << max_threads << " threads would need ~" << estimated_ram
+                  << " MB, above the " << max_ram_mb << " MB limit.\n";
+        std::cout << "      Using " << reduced << " threads instead, which fits. Raise the RAM\n";
+        std::cout << "      limit if you want all " << max_threads << " threads working.\n";
+        max_threads = reduced;
+        bytes_dijkstra = 17LL * N + 23LL * N * max_threads;
+        estimated_ram = std::max(bytes_shared_peak, bytes_dijkstra) / (1024 * 1024);
     }
 
     std::cout << "\nReading sample points...\n";
@@ -2134,14 +2247,21 @@ FETEOutput run_fete(const std::string& dem_path, const std::string& pts_path, co
     for (int i = 0; i < N; ++i)
         if (!passable[i]) slope_data[i] = kOutNoData;
 
-    std::string slope_path = join_path(out_dir, slope_filename + ".tif");
-    if (!write_gtiff_raster(slope_path, ncols, nrows, gt, wkt, slope_data.data(),
-                            GDT_Float32, &kOutNoDataD)) {
-        GDALClose(dem_ds);
-        return output;
+    // An empty filename means "do not save this output". The raster is still
+    // computed — later stages read it from memory — only the write is skipped.
+    // Batch runs use this to keep just the density raster.
+    std::string slope_path;
+    if (!slope_filename.empty()) {
+        slope_path = join_path(out_dir, slope_filename + ".tif");
+        if (!write_gtiff_raster(slope_path, ncols, nrows, gt, wkt, slope_data.data(),
+                                GDT_Float32, &kOutNoDataD)) {
+            GDALClose(dem_ds);
+            return output;
+        }
+        std::cout << "Slope saved\n";
+    } else {
+        std::cout << "Slope computed (not saved)\n";
     }
-
-    std::cout << "Slope saved\n";
     auto step2a_end = std::chrono::high_resolution_clock::now();
     auto step2a_time = std::chrono::duration<double>(step2a_end - step2a_start).count();
     std::cout << "  Time: " << std::fixed << std::setprecision(3) << step2a_time << " sec\n";
@@ -2170,6 +2290,13 @@ FETEOutput run_fete(const std::string& dem_path, const std::string& pts_path, co
                 double dh = std::sqrt((current_offs[k].dr * res_y) * (current_offs[k].dr * res_y) +
                     (current_offs[k].dc * res_x) * (current_offs[k].dc * res_x));
                 double dz = (double)dem[to_idx] - (double)z_from;
+                // A move the walker would refuse must not enter the average
+                // either, or the cost surface would advertise a route the
+                // search will never take.
+                if (slope_limit.enabled) {
+                    if (dz > slope_limit.up_tan * dh) continue;
+                    if (-dz > slope_limit.down_tan * dh) continue;
+                }
                 total_cost += apply_cost_function(cost_function, dh, dz);
                 valid_neighbors++;
             }
@@ -2184,14 +2311,18 @@ FETEOutput run_fete(const std::string& dem_path, const std::string& pts_path, co
     for (int i = 0; i < N; ++i)
         if (!passable[i]) cost_surface[i] = kOutNoData;
 
-    std::string cost_path = join_path(out_dir, cost_filename + ".tif");
-    if (!write_gtiff_raster(cost_path, ncols, nrows, gt, wkt, cost_surface.data(),
-                            GDT_Float32, &kOutNoDataD)) {
-        GDALClose(dem_ds);
-        return output;
+    std::string cost_path;
+    if (!cost_filename.empty()) {
+        cost_path = join_path(out_dir, cost_filename + ".tif");
+        if (!write_gtiff_raster(cost_path, ncols, nrows, gt, wkt, cost_surface.data(),
+                                GDT_Float32, &kOutNoDataD)) {
+            GDALClose(dem_ds);
+            return output;
+        }
+        std::cout << "Base cost surface saved\n";
+    } else {
+        std::cout << "Base cost surface computed (not saved)\n";
     }
-
-    std::cout << "Base cost surface saved\n";
     auto step2b_end = std::chrono::high_resolution_clock::now();
     auto step2b_time = std::chrono::duration<double>(step2b_end - step2b_start).count();
     std::cout << "  Time: " << std::fixed << std::setprecision(3) << step2b_time << " sec\n";
@@ -2278,32 +2409,40 @@ FETEOutput run_fete(const std::string& dem_path, const std::string& pts_path, co
     // --- Save combined cost surfaces ---
     if (has_any_modifiers) {
         // Save additional cost surface (combined multipliers)
-        additional_cost_path = join_path(out_dir, additional_cost_filename + ".tif");
-        if (!write_gtiff_raster(additional_cost_path, ncols, nrows, gt, wkt, cost_multipliers.data(), GDT_Float32)) {
-            GDALClose(dem_ds);
-            return output;
+        if (!additional_cost_filename.empty()) {
+            additional_cost_path = join_path(out_dir, additional_cost_filename + ".tif");
+            if (!write_gtiff_raster(additional_cost_path, ncols, nrows, gt, wkt, cost_multipliers.data(), GDT_Float32)) {
+                GDALClose(dem_ds);
+                return output;
+            }
+            std::cout << "Additional cost surface saved: " << additional_cost_path << "\n";
         }
-        std::cout << "Additional cost surface saved: " << additional_cost_path << "\n";
 
-        // Multiply base cost surface by cost multipliers to get total cost surface
-        std::cout << "Calculating total cost surface (base * multipliers)...\n";
-        std::vector<float> total_cost_surface(N);
+        // The total cost surface is a pure output: cost_multipliers, not this
+        // product, is what the barrier pass and the propagation read. So when
+        // it is not saved the multiplication is skipped entirely rather than
+        // computed and thrown away.
+        if (!total_cost_filename.empty()) {
+            // Multiply base cost surface by cost multipliers to get total cost surface
+            std::cout << "Calculating total cost surface (base * multipliers)...\n";
+            std::vector<float> total_cost_surface(N);
 
 #pragma omp parallel for num_threads(max_threads)
-        for (int i = 0; i < N; ++i) {
-            // cost_surface holds NoData on impassable cells: don't multiply it
-            total_cost_surface[i] = passable[i] ? cost_surface[i] * cost_multipliers[i]
-                                                : kOutNoData;
-        }
+            for (int i = 0; i < N; ++i) {
+                // cost_surface holds NoData on impassable cells: don't multiply it
+                total_cost_surface[i] = passable[i] ? cost_surface[i] * cost_multipliers[i]
+                                                    : kOutNoData;
+            }
 
-        // Save total cost surface
-        total_cost_path = join_path(out_dir, total_cost_filename + ".tif");
-        if (!write_gtiff_raster(total_cost_path, ncols, nrows, gt, wkt,
-                                total_cost_surface.data(), GDT_Float32, &kOutNoDataD)) {
-            GDALClose(dem_ds);
-            return output;
+            // Save total cost surface
+            total_cost_path = join_path(out_dir, total_cost_filename + ".tif");
+            if (!write_gtiff_raster(total_cost_path, ncols, nrows, gt, wkt,
+                                    total_cost_surface.data(), GDT_Float32, &kOutNoDataD)) {
+                GDALClose(dem_ds);
+                return output;
+            }
+            std::cout << "Total cost surface saved: " << total_cost_path << "\n";
         }
-        std::cout << "Total cost surface saved: " << total_cost_path << "\n";
     }
 
     // Slope and base cost surface are informational outputs only: free them
@@ -2373,6 +2512,89 @@ FETEOutput run_fete(const std::string& dem_path, const std::string& pts_path, co
     // the BUSIEST corridors into low-density cells.
     std::vector<uint64_t> fete_density(N, 0);
 
+    // ---- Checkpointing / resume ----
+    // Off unless TRAJECTA_CHECKPOINT_DIR is set, so nothing below changes a run
+    // that did not ask for it. See checkpoint.h for why a checkpoint is only
+    // these two numbers plus the density.
+    const ckpt::Config ckpt_cfg = ckpt::configFromEnv();
+    ckpt::Fingerprint ckpt_fp;
+    ckpt_fp.demSize = ckpt::fileSize(dem_path);
+    ckpt_fp.demMTime = ckpt::fileMTime(dem_path);
+    ckpt_fp.ptsSize = ckpt::fileSize(pts_path);
+    ckpt_fp.ptsMTime = ckpt::fileMTime(pts_path);
+    ckpt_fp.modifiersSize = ckpt::fileSize(cost_modifiers_path);
+    ckpt_fp.modifiersMTime = ckpt::fileMTime(cost_modifiers_path);
+    ckpt_fp.costRasterSize = ckpt::fileSize(cost_raster_path);
+    ckpt_fp.costRasterMTime = ckpt::fileMTime(cost_raster_path);
+    ckpt_fp.cells = (int64_t)N;
+    ckpt_fp.rows = nrows;
+    ckpt_fp.cols = ncols;
+    ckpt_fp.sources = P;
+    ckpt_fp.neighbours = num_neighbours;
+    ckpt_fp.costFunction = (int)cost_function;
+    ckpt_fp.bufferRadius = buffer_radius;
+    ckpt_fp.polylineBufferRadius = polyline_buffer_radius;
+    ckpt_fp.barrierThreshold = barrier_threshold;
+    ckpt_fp.slopeLimited = slope_limit.enabled ? 1 : 0;
+    ckpt_fp.maxSlopeUpDeg = slope_limit.enabled ? max_slope_up_deg : 0.0;
+    ckpt_fp.maxSlopeDownDeg = slope_limit.enabled ? max_slope_down_deg : 0.0;
+    // The order of the sources is part of the state: resuming at source 4000
+    // only means anything if source 4000 is the same cell it was.
+    ckpt_fp.sourceHash = ckpt::fnv1a(point_nodes.data(), point_nodes.size() * sizeof(int));
+
+    int ckpt_start_source = 0;
+    int ckpt_slot = 0;
+    uint64_t ckpt_sequence = 0;
+    int64_t resumed_unreached = 0;
+    if (!ckpt_cfg.resumePath.empty()) {
+        ckpt::Header h;
+        std::vector<uint64_t> saved;
+        if (!ckpt::load(ckpt_cfg.resumePath, &h, &saved)) {
+            // The file named on the command line is unreadable. Before giving
+            // up on hours of work, try the pair kept in the checkpoint folder:
+            // a machine that lost power mid-write leaves the newest file
+            // damaged and the previous one intact, and either of the two is
+            // worth far more than starting over. See ckpt::loadBest.
+            const std::string dir =
+                ckpt_cfg.dir.empty()
+                    ? std::filesystem::path(ckpt_cfg.resumePath).parent_path().string()
+                    : ckpt_cfg.dir;
+            if (dir.empty() || !ckpt::loadBest(dir, &h, &saved)) {
+                std::cout << "ERROR: the checkpoint could not be read: "
+                          << ckpt_cfg.resumePath << "\n";
+                GDALClose(dem_ds);
+                return output;
+            }
+            std::cout << "NOTE: " << ckpt_cfg.resumePath
+                      << " is damaged; resuming from the previous checkpoint "
+                         "instead.\n";
+        }
+        if (!(h.fingerprint == ckpt_fp)) {
+            std::cout << "ERROR: the checkpoint belongs to a different analysis "
+                         "(inputs or parameters have changed). Delete it or start "
+                         "a new run.\n";
+            GDALClose(dem_ds);
+            return output;
+        }
+        fete_density.swap(saved);
+        ckpt_start_source = h.nextSource;
+        resumed_unreached = h.unreachedPairs;
+        ckpt_sequence = h.sequence;
+        // The next write goes to the other slot, so the file being resumed from
+        // stays intact until a newer one is complete.
+        ckpt_slot = (h.slot == 0) ? 1 : 0;
+        std::cout << "Resuming from checkpoint: " << ckpt_start_source << " of "
+                  << P << " sources already done\n";
+        if (ckpt_start_source >= P) {
+            std::cout << "The checkpoint is already complete; nothing left to "
+                         "propagate.\n";
+        }
+    } else if (ckpt_cfg.enabled) {
+        // A stale checkpoint from an abandoned run must not be mistaken for
+        // this one's; this run starts the sequence over.
+        ckpt::discard(ckpt_cfg.dir);
+    }
+
     // ---- OPT-1: Pre-compute edge horizontal distances per offset ----
     // Eliminates sqrt() from inner Dijkstra loop (~100M calls/source)
     std::vector<double> precomp_inv_dh(num_offs);
@@ -2384,6 +2606,15 @@ FETEOutput run_fete(const std::string& dem_path, const std::string& pts_path, co
         precomp_inv_dh[k] = 1.0 / dh;
         precomp_dh_div6000[k] = dh / 6000.0;
         precomp_dh_div4800[k] = dh / 4800.0;
+    }
+
+    // The slope cut-off turns into a plain height difference per offset, so the
+    // inner loop compares two doubles it already has instead of dividing.
+    std::vector<double> dz_up_limit(num_offs), dz_down_limit(num_offs);
+    for (int k = 0; k < num_offs; ++k) {
+        const double dh = 1.0 / precomp_inv_dh[k];
+        dz_up_limit[k]   = slope_limit.up_tan   * dh;
+        dz_down_limit[k] = slope_limit.down_tan * dh;
     }
 
     // ---- OPT-2: Pre-compute flat neighbor offsets ----
@@ -2413,6 +2644,8 @@ FETEOutput run_fete(const std::string& dem_path, const std::string& pts_path, co
                 lut_scale[k] = precomp_dh_div6000[k];          // cost = (dh/6000)*g
             else if (cost_function == MARQUEZ_PEREZ_ET_AL_2017)
                 lut_scale[k] = precomp_dh_div4800[k];          // cost = (dh/4800)*g
+            else if (cost_function == HERZOG_2013)
+                lut_scale[k] = precomp_dh_div6000[k] * 6000.0; // dh in metres; cost = dh*g
             else
                 lut_scale[k] = precomp_dh_div6000[k] * 6.0;    // dh/1000; cost = (dh/1000)*g
         }
@@ -2428,6 +2661,12 @@ FETEOutput run_fete(const std::string& dem_path, const std::string& pts_path, co
                 g = std::exp(std::min(3.5 * std::abs(sf + 0.05), 80.0));
             } else if (cost_function == MARQUEZ_PEREZ_ET_AL_2017) {
                 g = std::exp(std::min(5.3 * std::abs(sf * 0.7 + 0.03), 80.0));
+            } else if (cost_function == HERZOG_2013) {
+                g = herzog_2013_kj_per_kg_m(sf);               // kJ per kg per metre
+            } else if (cost_function == CAMPBELL_2019_P5 || cost_function == CAMPBELL_2019_P50) {
+                const double theta = std::atan(sf) * 180.0 / 3.14159265358979323846;
+                const double v_kmh = campbell_2019_speed_ms(campbell_params(cost_function), theta) * 3.6;
+                g = 1.0 / v_kmh;
             } else {
                 double s = sf * 100.0;
                 double speed_ms  = 0.11 + std::exp(-(s + 5.0) * (s + 5.0) / 1800.0);
@@ -2479,6 +2718,9 @@ FETEOutput run_fete(const std::string& dem_path, const std::string& pts_path, co
     const int* pn_ptr = point_nodes.data();
     const char* ipn_ptr = is_point_node.data();
     const double* inv_dh_ptr = precomp_inv_dh.data();
+    const double* dz_up_ptr = dz_up_limit.data();
+    const double* dz_down_ptr = dz_down_limit.data();
+    const bool slope_capped = slope_limit.enabled;
     const double* dh6000_ptr = precomp_dh_div6000.data();
     const double* dh4800_ptr = precomp_dh_div4800.data();
     const float* lut_ptr = cost_lut.data();
@@ -2492,7 +2734,7 @@ FETEOutput run_fete(const std::string& dem_path, const std::string& pts_path, co
     std::vector<PerfSample> perf_samples;
     std::atomic<int> global_completed{0};
     std::atomic<long long> global_touched{0};  // settled cells, for cache-footprint chart
-    std::atomic<long long> unreached_pairs{0}; // source-to-point paths that do not exist
+    std::atomic<long long> unreached_pairs{resumed_unreached}; // source-to-point paths that do not exist
     CpuMonitor cpu_monitor;
     double perf_prev_wall = 0.0;
     long long perf_prev_touched = 0;
@@ -2501,6 +2743,19 @@ FETEOutput run_fete(const std::string& dem_path, const std::string& pts_path, co
         perf_samples.reserve(P / perf_batch_size + 2);
         cpu_monitor.sample(0.0);  // initialize baseline
     }
+    // Resumed sources are already reflected in the density and must be counted
+    // so the progress bar and the ETA describe the whole analysis, not the
+    // remainder of it.
+    global_completed = ckpt_start_source;
+    perf_prev_count = ckpt_start_source;
+
+    // Where the checkpoint boundaries fall (see checkpoint.h). When
+    // checkpointing is off the whole source range is one block, which makes the
+    // loop below identical to the plain `omp for` it replaced.
+    const int kCheckpointBlock =
+        ckpt_cfg.enabled ? std::max(1, ckpt_cfg.blockSources) : std::max(1, P);
+    auto ckpt_last_write = std::chrono::steady_clock::now();
+    bool ckpt_write_failed = false;
 
     // ---- OPT-6: Split parallel region from for loop ----
     // Allocate per-thread buffers ONCE, reuse across all iterations
@@ -2529,8 +2784,18 @@ FETEOutput run_fete(const std::string& dem_path, const std::string& pts_path, co
 
         bool first_iteration = true;
 
+        // The sources are walked in blocks so that there is a moment, at the
+        // barrier ending each block, when "everything below block_end is done"
+        // is exactly true — which is the only thing a checkpoint can record
+        // about a dynamically scheduled loop. Inside a block nothing changes:
+        // the same dynamic schedule over the same bodies.
+        for (int block_start = ckpt_start_source; block_start < P;
+             block_start += kCheckpointBlock) {
+        const int block_end = (block_start + kCheckpointBlock < P)
+                                  ? block_start + kCheckpointBlock : P;
+
 #pragma omp for schedule(dynamic)
-        for (int source_idx = 0; source_idx < P; ++source_idx) {
+        for (int source_idx = block_start; source_idx < block_end; ++source_idx) {
             const int source = pn_ptr[source_idx];
 
             // ---- OPT-10: Smart reset - only touch cells modified last iteration ----
@@ -2592,6 +2857,9 @@ FETEOutput run_fete(const std::string& dem_path, const std::string& pts_path, co
 
                     // OPT-1: Pre-computed dh eliminates sqrt; reformulated Tobler eliminates divisions
                     double dz = (double)dem_ptr[u] - (double)dem_v;
+                    // Slope cut-off, as a height difference so no division is
+                    // needed. Off by default, and then perfectly predicted.
+                    if (slope_capped && (dz > dz_up_ptr[k] || -dz > dz_down_ptr[k])) continue;
                     double sf = dz * inv_dh_ptr[k];
                     float edge_cost;
                     if (use_lut) {
@@ -2610,6 +2878,13 @@ FETEOutput run_fete(const std::string& dem_path, const std::string& pts_path, co
                     } else if (cost_function == MARQUEZ_PEREZ_ET_AL_2017) {
                         double arg = 5.3 * std::abs(sf * 0.7 + 0.03);
                         edge_cost = (float)(dh4800_ptr[k] * std::exp(std::min(arg, 80.0)));
+                    } else if (cost_function == HERZOG_2013) {
+                        edge_cost = (float)(herzog_2013_kj_per_kg_m(sf) * (dh6000_ptr[k] * 6000.0));
+                    } else if (cost_function == CAMPBELL_2019_P5 || cost_function == CAMPBELL_2019_P50) {
+                        const double theta = std::atan(sf) * 180.0 / 3.14159265358979323846;
+                        const double v_kmh =
+                            campbell_2019_speed_ms(campbell_params(cost_function), theta) * 3.6;
+                        edge_cost = (float)((dh6000_ptr[k] * 6000.0) / (v_kmh * 1000.0));
                     } else {
                         double s = sf * 100.0;
                         double speed_ms  = 0.11 + std::exp(-(s + 5.0) * (s + 5.0) / 1800.0);
@@ -2712,7 +2987,7 @@ FETEOutput run_fete(const std::string& dem_path, const std::string& pts_path, co
                     if (my_count > perf_prev_count) {
                         double now_wall = std::chrono::duration<double>(
                             std::chrono::high_resolution_clock::now() - step3_start).count();
-                        print_progress(my_count, P, now_wall);
+                        print_progress(my_count, P, now_wall, 40, ckpt_start_source);
 
                         if (g_verbose_mode) {
                             int batch_sz = my_count - perf_prev_count;
@@ -2735,8 +3010,44 @@ FETEOutput run_fete(const std::string& dem_path, const std::string& pts_path, co
                     }
                 }
             }
-        } // end omp for
+        } // end omp for  (implicit barrier: every source below block_end is done)
+
+        // One thread writes; the barrier at the end of the `single` keeps the
+        // others out of the density array while it is being read.
+#pragma omp single
+        {
+            if (ckpt_cfg.enabled && !ckpt_write_failed && block_end < P) {
+                const auto now = std::chrono::steady_clock::now();
+                const double since = std::chrono::duration<double>(
+                    now - ckpt_last_write).count();
+                if (since >= ckpt_cfg.intervalSeconds) {
+                    std::string err;
+                    if (ckpt::save(ckpt_cfg.dir, ckpt_slot, ++ckpt_sequence, ckpt_fp,
+                                   block_end, unreached_pairs.load(), fete_density,
+                                   &err)) {
+                        ckpt_slot = (ckpt_slot == 0) ? 1 : 0;
+                        ckpt_last_write = now;
+                        std::cout << "\n[checkpoint] saved at source " << block_end
+                                  << " of " << P << "\n";
+                    } else {
+                        // Reported once and then left alone: a run must not be
+                        // brought down, or slowed to a crawl, by a full disk.
+                        ckpt_write_failed = true;
+                        std::cout << "\n[checkpoint] WARNING: could not be saved ("
+                                  << err << "). Checkpointing is now off for this "
+                                     "run.\n";
+                        --ckpt_sequence;
+                    }
+                }
+            }
+        } // end omp single (implicit barrier)
+
+        } // end block loop
     } // end omp parallel
+
+    // Nothing left to resume: the analysis got to the end.
+    if (ckpt_cfg.enabled)
+        ckpt::discard(ckpt_cfg.dir);
 
     std::cout << "\n";
     auto step3_end = std::chrono::high_resolution_clock::now();
@@ -2935,6 +3246,84 @@ FETEOutput run_fete(const std::string& dem_path, const std::string& pts_path, co
     output.total_cells = N;
     output.time_seconds = global_time;
 
+    // ---- Run manifest ----
+    // Last thing before closing up: by now every output exists on disk and
+    // every statistic is known, which is the whole reason it is written here
+    // and not at the start.
+    if (g_write_manifest) {
+        manifest::Manifest mf("FETE");
+        // The run measured itself; the manifest must not measure the
+        // fraction of a second it takes to build.
+        mf.setElapsed(global_time);
+
+        mf.section("inputs");
+        mf.inputFile("DEM", dem_path);
+        mf.inputFile("sample points", pts_path);
+        mf.inputFile("cost modifiers (vector)", cost_modifiers_path);
+        mf.inputFile("cost modifiers (raster)", cost_raster_path);
+
+        mf.section("settings");
+        mf.kv("neighbours", (long long)num_neighbours);
+        mf.kv("cost function", std::string(cost_function_name(cost_function)));
+        mf.kv("cost units", std::string(cost_function_units(cost_function)));
+        mf.kv("slope units", std::string(slope_in_degrees ? "degrees" : "percent"));
+        if (slope_limit.enabled) {
+            mf.kv("max uphill slope", max_slope_up_deg);
+            mf.kv("max downhill slope", max_slope_down_deg);
+        } else {
+            mf.kv("slope cut-off", std::string("(not used)"));
+        }
+        mf.kv("path smoothing buffer", (long long)buffer_radius);
+        if (!cost_modifiers_path.empty())
+            mf.kv("polyline buffer", (long long)polyline_buffer_radius);
+        const bool barriers_on = barrier_threshold > 0.0;
+        mf.kv("impassable barriers", barriers_on);
+        if (barriers_on)
+            mf.kv("barrier threshold", barrier_threshold, 1);
+
+        mf.section("hardware");
+        mf.kv("CPU", get_cpu_model());
+        mf.kv("threads used", (long long)max_threads);
+        mf.kv("RAM ceiling (MB)", (long long)max_ram_mb);
+        // What actually happened, not what was asked for: the request can be
+        // granted and still fail to allocate.
+        if (g_large_pages_requested) {
+            mf.kv("large pages", std::string(g_large_pages_bytes.load() > 0
+                                                 ? "requested and active"
+                                                 : "requested but unavailable"));
+        } else {
+            mf.kv("large pages", std::string("not requested"));
+        }
+
+        mf.section("results");
+        mf.kv("grid", std::to_string(ncols) + " x " + std::to_string(nrows)
+                          + " = " + std::to_string((long long)N) + " cells");
+        mf.kv("source points", (long long)P);
+        mf.kv("cells with paths", (long long)nonzero_cells);
+        mf.kv("max density", (long long)output.max_density);
+        mf.kv("mean density (non-zero)", output.avg_density, 2);
+        mf.kv("unreached pairs", (long long)unreached_pairs.load());
+        mf.kv("computation time (s)", global_time, 1);
+
+        mf.section("outputs");
+        mf.outputFile("density", fete_density_path);
+        mf.outputFile("slope", slope_path);
+        mf.outputFile("cost surface", cost_path);
+        mf.outputFile("additional cost", additional_cost_path);
+        mf.outputFile("total cost", total_cost_path);
+
+        const std::string mf_path = manifest::pathFor(out_dir, output_filename);
+        std::string mf_error;
+        if (mf.write(mf_path, &mf_error)) {
+            std::cout << "Run manifest: " << mf_path << "\n";
+        } else {
+            // A missing manifest is a nuisance; a lost analysis is not. Warn
+            // and carry on.
+            std::cout << "WARNING: the run manifest could not be written ("
+                      << mf_error << ")\n";
+        }
+    }
+
     GDALClose(dem_ds);
 
     return output;
@@ -2991,7 +3380,7 @@ int main(int argc, char* argv[]) {
     }
 
     std::cout << "\n" << std::string(70, '=') << "\n";
-    center_text("TRAJECTA v1.0.0 - A SPATIAL MOVEMENT ANALYSIS SOFTWARE");
+    center_text("TRAJECTA v1.0.1 - A SPATIAL MOVEMENT ANALYSIS SOFTWARE");
     center_text("by Stefano Apra, ISAW - NYU");
     std::cout << std::string(70, '=') << "\n";
     std::cout << "You can type 'help' at any prompt for instructions\n";
@@ -3114,7 +3503,7 @@ int main(int argc, char* argv[]) {
     std::cout << "  Total RAM: " << (total_ram_mb / 1024) << " GB\n\n";
 
     int max_threads = std::max(1, max_available_threads - 4);
-    int64_t max_ram_mb = 4096;
+    int64_t max_ram_mb = 8192;
 
     std::string dem_path = saved_config.dem_path;
     std::string pts_path = saved_config.pts_path;
@@ -3131,6 +3520,11 @@ int main(int argc, char* argv[]) {
     double barrier_threshold = 1000.0;
     int num_neighbours = 16;
     bool slope_in_degrees = true;
+    // Slope cut-off, off unless asked for: a limit nobody chose would silently
+    // change every result.
+    bool slope_limit_enabled = false;
+    double max_slope_up_deg = 30.0;
+    double max_slope_down_deg = 30.0;
     CostFunctionType cost_function = TOBLER_WHITE_2015;
     // Sample points source. Left at false, the engine behaves exactly as it
     // always has: the points come from a file and nothing below is executed.
@@ -3174,7 +3568,8 @@ int main(int argc, char* argv[]) {
             print_question("Enter maximum RAM to allocate (MB):\n");
             std::cout << "  Total available: " << total_ram_mb << " MB (~" << (total_ram_mb / 1024) << " GB)\n";
             std::cout << "  Example: 4096 (for 4 GB), 8192 (for 8 GB)\n";
-            std::cout << "  Recommended: ~60% of available RAM\n";
+            std::cout << "  Recommended: at least 8192 MB. The analysis needs far less memory\n";
+            std::cout << "  than most machines have, and a higher ceiling does not speed it up.\n";
             std::cout << "> ";
             safe_getline(ram_input);
 
@@ -3190,7 +3585,7 @@ int main(int argc, char* argv[]) {
                 if (max_ram_mb < 512) max_ram_mb = 512;
             }
             catch (...) {
-                max_ram_mb = 4096;
+                max_ram_mb = 8192;
             }
             break;
         }
@@ -3243,6 +3638,35 @@ int main(int argc, char* argv[]) {
             std::cout << "Large memory pages: not supported on this platform, ignoring\n";
             g_large_pages_requested = false;
 #endif
+        }
+
+        // ---- Run manifest (opt-out) ----
+        while (true) {
+            print_question("\nWrite a run manifest next to the results? (yes/no):\n");
+            std::cout << "  A text file recording every input, setting and output of this\n";
+            std::cout << "  run, so the results can be traced back and reproduced later.\n";
+            std::cout << "  Costs a few seconds: each input file is hashed.\n";
+            std::cout << "  Default: YES\n";
+            std::cout << "> ";
+            std::string mf_input;
+            safe_getline(mf_input);
+
+            if (check_exit_command(mf_input)) {
+                return 0;
+            }
+            if (check_help_command(mf_input)) {
+                continue;
+            }
+            const std::string mf = to_lower_copy(ltrim_copy(mf_input));
+            if (mf.empty() || mf == "yes" || mf == "y") {
+                g_write_manifest = true;
+                break;
+            }
+            if (mf == "no" || mf == "n") {
+                g_write_manifest = false;
+                break;
+            }
+            std::cout << "ERROR: Please answer yes or no\n";
         }
 
         std::cout << std::string(70, '=') << "\n\n";
@@ -3537,6 +3961,7 @@ int main(int argc, char* argv[]) {
                 std::cout << "  3) 24-connectivity (extended)\n";
                 std::cout << "  4) 32-connectivity (more extended)\n";
                 std::cout << "  5) 64-connectivity (full extended)\n";
+                std::cout << "  6) Custom (enter the number of directions yourself)\n";
                 std::cout << "  "; print_default("Leave blank for default (16)"); std::cout << "\n";
                 std::cout << "> ";
                 std::string neighbours_input;
@@ -3552,6 +3977,10 @@ int main(int argc, char* argv[]) {
                     case 3: num_neighbours = 24; break;
                     case 4: num_neighbours = 32; break;
                     case 5: num_neighbours = 64; break;
+                    case 6: {
+                        if (!ask_custom_neighbours(num_neighbours)) return 0;
+                        break;
+                    }
                     default: num_neighbours = 16; break;
                     }
                 }
@@ -3565,7 +3994,10 @@ int main(int argc, char* argv[]) {
                 print_question("\nSelect cost function:\n");
                 std::cout << "  1) Modified Tobler's Function (White 2015) "; print_default("[DEFAULT]"); std::cout << "\n";
                 std::cout << "  2) Marquez-Perez et al. (2017)\n";
-                std::cout << "  3) Irmischer and Clarke (2017)\n";
+                std::cout << "  3) Irmischer and Clarke (2017), on-path male\n";
+                std::cout << "  4) Herzog (2013) metabolic cost  -- energy, kJ/kg, not hours\n";
+                std::cout << "  5) Campbell et al. (2019), 5th percentile (ordinary hiking)\n";
+                std::cout << "  6) Campbell et al. (2019), 50th percentile (includes joggers)\n";
                 std::cout << "  "; print_default("Leave blank for default"); std::cout << "\n";
                 std::cout << "> ";
                 std::string cf_input;
@@ -3577,15 +4009,30 @@ int main(int argc, char* argv[]) {
                     int choice = std::stoi(cf_input);
                     if (choice == 2)      cost_function = MARQUEZ_PEREZ_ET_AL_2017;
                     else if (choice == 3) cost_function = IRMISCHER_CLARKE_2017;
+                    else if (choice == 4) cost_function = HERZOG_2013;
+                    else if (choice == 5) cost_function = CAMPBELL_2019_P5;
+                    else if (choice == 6) cost_function = CAMPBELL_2019_P50;
                     else                  cost_function = TOBLER_WHITE_2015;
                 }
                 catch (...) {
                     cost_function = TOBLER_WHITE_2015;
                 }
+                if (cost_function == HERZOG_2013) {
+                    std::cout << "NOTE: this cost function measures energy. Every cost in this run,\n";
+                    std::cout << "      including the cost surfaces, is in kJ per kg of walker,\n";
+                    std::cout << "      not in hours, and cannot be compared with the other models.\n";
+                }
                 break;
             }
 
-            slope_in_degrees = (cost_function == TOBLER_WHITE_2015);
+            if (!ask_slope_limit(slope_limit_enabled, max_slope_up_deg, max_slope_down_deg))
+                return 0;
+
+            // Only the unit of the exported slope raster: Tobler is usually read
+            // in degrees and Campbell is defined in them, the others in percent.
+            slope_in_degrees = (cost_function == TOBLER_WHITE_2015
+                                || cost_function == CAMPBELL_2019_P5
+                                || cost_function == CAMPBELL_2019_P50);
 
             while (true) {
                 print_question("\nSelect buffer radius (cells) for path smoothing:\n");
@@ -3614,14 +4061,15 @@ int main(int argc, char* argv[]) {
             while (true) {
                 std::cout << "\nEnter slope raster filename (without extension):\n";
                 std::cout << "  Example: slope\n";
+                std::cout << "  Leave blank to skip this output\n";
                 std::cout << "> ";
                 std::string input;
                 safe_getline(input);
                 if (check_exit_command(input)) return 0;
                 if (check_help_command(input)) continue;
                 if (input.empty()) {
-                    std::cout << "ERROR: Slope filename cannot be empty!\n";
-                    continue;
+                    slope_filename.clear();  // computed, but not written
+                    break;
                 }
                 if (!valid_output_filename(input)) { print_filename_error(); continue; }
                 slope_filename = input;
@@ -3635,14 +4083,15 @@ int main(int argc, char* argv[]) {
                 std::cout << "\nEnter base cost surface raster filename (without extension):\n";
                 std::cout << "  This is the cost surface calculated from slope * cost function\n";
                 std::cout << "  Example: cost_surface\n";
+                std::cout << "  Leave blank to skip this output\n";
                 std::cout << "> ";
                 std::string input;
                 safe_getline(input);
                 if (check_exit_command(input)) return 0;
                 if (check_help_command(input)) continue;
                 if (input.empty()) {
-                    std::cout << "ERROR: Cost surface filename cannot be empty!\n";
-                    continue;
+                    cost_filename.clear();  // computed, but not written
+                    break;
                 }
                 if (!valid_output_filename(input)) { print_filename_error(); continue; }
                 cost_filename = input;
@@ -3662,14 +4111,15 @@ int main(int argc, char* argv[]) {
                     std::cout << "\nEnter additional cost surface raster filename (without extension):\n";
                     std::cout << "  This is the rasterized polylines with cost multipliers\n";
                     std::cout << "  Example: cost_surface_additional\n";
+                    std::cout << "  Leave blank to skip this output\n";
                     std::cout << "> ";
                     std::string input;
                     safe_getline(input);
                     if (check_exit_command(input)) return 0;
                     if (check_help_command(input)) continue;
                     if (input.empty()) {
-                        std::cout << "ERROR: Additional cost surface filename cannot be empty!\n";
-                        continue;
+                        additional_cost_filename.clear();  // computed, but not written
+                        break;
                     }
                     if (!valid_output_filename(input)) { print_filename_error(); continue; }
                     additional_cost_filename = input;
@@ -3683,14 +4133,15 @@ int main(int argc, char* argv[]) {
                     std::cout << "\nEnter total cost surface raster filename (without extension):\n";
                     std::cout << "  This is the final cost surface (base * additional)\n";
                     std::cout << "  Example: cost_surface_total\n";
+                    std::cout << "  Leave blank to skip this output\n";
                     std::cout << "> ";
                     std::string input;
                     safe_getline(input);
                     if (check_exit_command(input)) return 0;
                     if (check_help_command(input)) continue;
                     if (input.empty()) {
-                        std::cout << "ERROR: Total cost surface filename cannot be empty!\n";
-                        continue;
+                        total_cost_filename.clear();  // not computed and not written
+                        break;
                     }
                     if (!valid_output_filename(input)) { print_filename_error(); continue; }
                     total_cost_filename = input;
@@ -3739,17 +4190,30 @@ int main(int argc, char* argv[]) {
             else
                 std::cout << "  Barrier threshold: disabled (soft costs)\n";
         }
-        std::cout << "  Slope filename: " << slope_filename << ".tif\n";
-        std::cout << "  Base cost filename: " << cost_filename << ".tif\n";
+        // An empty name means the raster is not written at all, so say so
+        // rather than printing a bare ".tif".
+        auto print_output_name = [](const char* label, const std::string& name) {
+            std::cout << "  " << label << ": "
+                      << (name.empty() ? std::string("not saved") : name + ".tif") << "\n";
+        };
+        print_output_name("Slope filename", slope_filename);
+        print_output_name("Base cost filename", cost_filename);
         if (!cost_modifiers_path.empty() || !cost_raster_path.empty()) {
-            std::cout << "  Additional cost filename: " << additional_cost_filename << ".tif\n";
-            std::cout << "  Total cost filename: " << total_cost_filename << ".tif\n";
+            print_output_name("Additional cost filename", additional_cost_filename);
+            print_output_name("Total cost filename", total_cost_filename);
         }
         std::cout << "  Density filename: " << output_filename << ".tif\n";
         std::cout << "  Buffer radius: " << buffer_radius << " cells\n";
         std::cout << "  Neighbours: " << num_neighbours << "-connectivity\n";
         std::cout << "  Slope units: " << (slope_in_degrees ? "degrees" : "percentage") << "\n";
-        std::cout << "  Cost function: " << (cost_function == TOBLER_WHITE_2015 ? "Modified Tobler (White 2015)" : (cost_function == MARQUEZ_PEREZ_ET_AL_2017 ? "Marquez-Perez et al. (2017)" : "Irmischer and Clarke (2017)")) << "\n";
+        std::cout << "  Cost function: " << cost_function_name(cost_function) << "\n";
+        std::cout << "  Cost units: " << cost_function_units(cost_function) << "\n";
+        if (slope_limit_enabled) {
+            std::cout << "  Slope cut-off: refuse above " << max_slope_up_deg
+                      << " deg uphill / " << max_slope_down_deg << " deg downhill\n";
+        } else {
+            std::cout << "  Slope cut-off: none\n";
+        }
         std::cout << "  Max threads: " << max_threads << "\n";
         std::cout << "  Max RAM: " << max_ram_mb << " MB\n";
         std::cout << std::string(70, '=') << "\n\n";
@@ -3757,7 +4221,8 @@ int main(int argc, char* argv[]) {
         FETEOutput result = run_fete(dem_path, pts_path, out_dir, slope_filename, cost_filename, output_filename,
             buffer_radius, max_threads, max_ram_mb, num_neighbours, slope_in_degrees, cost_function,
             cost_modifiers_path, polyline_buffer_radius, cost_raster_path,
-            additional_cost_filename, total_cost_filename, barrier_threshold);
+            additional_cost_filename, total_cost_filename, barrier_threshold,
+            slope_limit_enabled, max_slope_up_deg, max_slope_down_deg);
 
         if (result.success) {
             // Save config
@@ -3776,12 +4241,17 @@ int main(int argc, char* argv[]) {
             if (generate_points) {
                 std::cout << "  - " << pts_path << " (generated sample points)\n";
             }
-            std::cout << "  - " << result.slope_path << "\n";
-            std::cout << "  - " << result.cost_path << " (base cost surface)\n";
-            if (!result.additional_cost_path.empty()) {
+            // A skipped output leaves its path empty: list only what was
+            // actually written, and test each one on its own — additional and
+            // total can now be skipped independently of each other.
+            if (!result.slope_path.empty())
+                std::cout << "  - " << result.slope_path << "\n";
+            if (!result.cost_path.empty())
+                std::cout << "  - " << result.cost_path << " (base cost surface)\n";
+            if (!result.additional_cost_path.empty())
                 std::cout << "  - " << result.additional_cost_path << " (additional cost multipliers)\n";
+            if (!result.total_cost_path.empty())
                 std::cout << "  - " << result.total_cost_path << " (total cost surface)\n";
-            }
             std::cout << "  - " << result.density_path << "\n";
         }
 

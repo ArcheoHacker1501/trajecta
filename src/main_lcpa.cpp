@@ -21,6 +21,10 @@
 #include "gdal_priv.h"
 #include "ogrsf_frmts.h"
 
+#include "manifest.h"
+#include "neighbourhood.h"   // defines Off and builds the offset tables
+#include "costfunctions.h"   // the cost models and the slope cut-off
+
 namespace fs = std::filesystem;
 
 static inline std::string join_path(const std::string& dir, const std::string& file) {
@@ -29,6 +33,7 @@ static inline std::string join_path(const std::string& dir, const std::string& f
 
 // ========== GLOBAL SETTINGS ==========
 extern bool g_verbose_mode;  // Defined in main_fete.cpp, shared across files
+extern bool g_write_manifest;  // Same: one setting, one flag, both modes
 
 // ========== LOGGING FUNCTIONS ==========
 inline void info_print(const std::string& msg) {
@@ -46,7 +51,7 @@ inline void debug_print(const std::string& msg) {
 // ========== HELP TEXT FOR LCPA ONLY ==========
 const char* HELP_TEXT_LCPA = R"(
 ===============================================================================
-                             TRAJECTA v1.0.0
+                             TRAJECTA v1.0.1
                   A SPATIAL MOVEMENT ANALYSIS SOFTWARE
                        Developed by Stefano Apra'
               Institute for the Study of the Ancient World
@@ -109,57 +114,24 @@ struct LCPAOutput {
     std::string total_cost_path;       // Total cost surface (base * additional)
     std::string path_raster_path;
     std::string path_lines_path;
+    std::string corridor_path;          // empty unless the corridor was asked for
     int num_destinations;
     int total_path_cells;
     double total_cost;
     double time_seconds;
 };
 
-struct Off { int dr; int dc; };
-
 // ========== HELPER FUNCTIONS ==========
 static inline int idx(int r, int c, int ncols) { return r * ncols + c; }
 static inline void idx2coord(int index, int ncols, int& r, int& c) { r = index / ncols; c = index % ncols; }
 
-// ========== NEIGHBOR OFFSET ARRAYS ==========
-static const Off OFFS_8[8] = { {-1,-1},{-1,0},{-1,1},{0,-1},{0,1},{1,-1},{1,0},{1,1} };
-static const Off OFFS_16[16] = { {-1,-1},{-1,0},{-1,1},{0,-1},{0,1},{1,-1},{1,0},{1,1}, {-2,-1},{-2,1},{-1,-2},{-1,2},{1,-2},{1,2},{2,-1},{2,1} };
-static const Off OFFS_24[24] = { {-1,-1},{-1,0},{-1,1},{0,-1},{0,1},{1,-1},{1,0},{1,1}, {-2,-2},{-2,-1},{-2,0},{-2,1},{-2,2},{0,-2},{0,2}, {2,-2},{2,-1},{2,0},{2,1},{2,2}, {-1,-2},{-1,2},{1,-2},{1,2} };
-static const Off OFFS_32[32] = { {-1,-1},{-1,0},{-1,1},{0,-1},{0,1},{1,-1},{1,0},{1,1}, {-2,-1},{-2,1},{-1,-2},{-1,2},{1,-2},{1,2},{2,-1},{2,1}, {-2,-2},{-2,0},{-2,2},{0,-2},{0,2},{2,-2},{2,0},{2,2}, {-3,-1},{-3,1},{-1,-3},{-1,3},{1,-3},{1,3},{3,-1},{3,1} };
-static const Off OFFS_64[64] = { {-1,-1},{-1,0},{-1,1},{0,-1},{0,1},{1,-1},{1,0},{1,1}, {-2,-1},{-2,1},{-1,-2},{-1,2},{1,-2},{1,2},{2,-1},{2,1}, {-2,-2},{-2,0},{-2,2},{0,-2},{0,2},{2,-2},{2,0},{2,2}, {-3,-1},{-3,1},{-1,-3},{-1,3},{1,-3},{1,3},{3,-1},{3,1}, {-3,-2},{-3,0},{-3,2},{-2,-3},{-2,3},{0,-3},{0,3},{2,-3},{2,3},{3,-2},{3,0},{3,2}, {-3,-3},{-3,3},{3,-3},{3,3} };
+// Off and the offset tables come from neighbourhood.h, shared with FETE so the
+// two modes cannot drift apart. Defined in main_fete.cpp:
+bool ask_custom_neighbours(int& num_neighbours);
+bool ask_slope_limit(bool& enabled, double& up_deg, double& down_deg);
 
 // ========== COST FUNCTIONS ==========
-enum CostFunctionType { TOBLER_WHITE_2015 = 1, MARQUEZ_PEREZ_ET_AL_2017 = 2, IRMISCHER_CLARKE_2017 = 3 };
-
-static inline float tobler_white_2015(double dh_m, double dz_m) {
-    const double sf = dz_m / dh_m;
-    const double speed_kmh = 6.0 * std::exp(-3.5 * std::abs(sf + 0.05));
-    const double safe_speed = std::max(speed_kmh, 1e-12);
-    return (float)((dh_m / 1000.0) / safe_speed);
-}
-
-static inline float marquez_perez_et_al_2017(double dh_m, double dz_m) {
-    const double sf = dz_m / dh_m;
-    const double speed_kmh = 4.8 * std::exp(-5.3 * std::abs((sf * 0.7) + 0.03));
-    const double safe_speed = std::max(speed_kmh, 1e-12);
-    return (float)((dh_m / 1000.0) / safe_speed);
-}
-
-static inline float irmischer_clarke_2017(double dh_m, double dz_m) {
-    const double sf = (dz_m / dh_m) * 100.0;
-    const double speed_ms  = 0.11 + std::exp(-(sf + 5.0) * (sf + 5.0) / 1800.0);
-    const double speed_kmh = speed_ms * 3.6;
-    const double safe_speed = std::max(speed_kmh, 1e-12);
-    return (float)((dh_m / 1000.0) / safe_speed);
-}
-
-static inline float apply_cost_function(CostFunctionType cf, double dh_m, double dz_m) {
-    switch (cf) {
-        case MARQUEZ_PEREZ_ET_AL_2017: return marquez_perez_et_al_2017(dh_m, dz_m);
-        case IRMISCHER_CLARKE_2017:    return irmischer_clarke_2017(dh_m, dz_m);
-        default:                       return tobler_white_2015(dh_m, dz_m);
-    }
-}
+// Defined in costfunctions.h, shared with FETE.
 
 static inline bool world_to_pixel_northup(double x, double y, const double gt[6], int& col, int& row) {
     if (std::abs(gt[2]) > 1e-12 || std::abs(gt[4]) > 1e-12) return false;
@@ -195,6 +167,10 @@ extern GDALDataset* open_vector_dataset(const std::string& path);
 extern bool write_gtiff_raster(const std::string& path, int ncols, int nrows,
     const double gt[6], const char* wkt, void* data, GDALDataType dtype,
     const double* nodata = nullptr);
+// Defined in main_fete.cpp. The last argument is what a resumed run inherited
+// from its checkpoint; LCPA never resumes, so it stays 0.
+void print_progress(int current, int total, double elapsed_sec, int bar_width,
+                    int done_before);
 
 // ========== LCPA-SPECIFIC FUNCTIONS ==========
 
@@ -371,9 +347,19 @@ LCPAOutput run_lcpa(const std::string& dem_path, const std::string& out_dir,
     const std::string& cost_modifiers_path = "", int polyline_buffer_radius = 0,
     const std::string& cost_raster_path = "",
     const std::string& additional_cost_filename = "", const std::string& total_cost_filename = "",
-    double barrier_threshold = 1000.0) {
+    double barrier_threshold = 1000.0,
+    // Only the manifest needs these: the computation works from the point
+    // indices above, but the record has to name the files they came from.
+    const std::string& origin_path = "", const std::string& destinations_path = "",
+    bool slope_limit_enabled = false,
+    double max_slope_up_deg = 90.0, double max_slope_down_deg = 90.0,
+    bool want_corridor = false, double corridor_width_percent = 10.0,
+    const std::string& corridor_filename = "cost_corridor") {
 
-    LCPAOutput output = { false, "", "", "", "", "", "", 0, 0, 0.0, 0.0 };
+    const SlopeLimit slope_limit =
+        make_slope_limit(slope_limit_enabled, max_slope_up_deg, max_slope_down_deg);
+
+    LCPAOutput output = { false, "", "", "", "", "", "", "", 0, 0, 0.0, 0.0 };
     auto global_start = std::chrono::high_resolution_clock::now();
 
     // Ensure the output directory exists: GDAL Create returns null otherwise
@@ -393,16 +379,13 @@ LCPAOutput run_lcpa(const std::string& dem_path, const std::string& out_dir,
     std::vector<float> dem;
     GDALDataset* dem_ds = nullptr;
 
-    const Off* current_offs = OFFS_16;
-    int num_offs = 16;
-
-    switch (num_neighbours) {
-    case 8:  current_offs = OFFS_8;  num_offs = 8;  break;
-    case 16: current_offs = OFFS_16; num_offs = 16; break;
-    case 24: current_offs = OFFS_24; num_offs = 24; break;
-    case 32: current_offs = OFFS_32; num_offs = 32; break;
-    case 64: current_offs = OFFS_64; num_offs = 64; break;
-    default: current_offs = OFFS_16; num_offs = 16; break;
+    std::vector<Off> offs_storage;
+    const int num_offs = neighbourhood::build(num_neighbours, offs_storage);
+    const Off* current_offs = offs_storage.data();
+    if (num_offs != num_neighbours) {
+        std::cout << "NOTE: " << num_neighbours << " is not an admissible neighbourhood size; "
+                  << "using " << num_offs << " directions.\n";
+        num_neighbours = num_offs;   // so the summary and the manifest agree
     }
 
     std::cout << "Reading DEM...\n";
@@ -511,14 +494,20 @@ LCPAOutput run_lcpa(const std::string& dem_path, const std::string& out_dir,
     for (int i = 0; i < N; ++i)
         if (!passable[i]) slope_data[i] = kOutNoData;
 
-    std::string slope_path = join_path(out_dir, slope_filename + ".tif");
-    if (!write_gtiff_raster(slope_path, ncols, nrows, gt, wkt, slope_data.data(),
-                            GDT_Float32, &kOutNoDataD)) {
-        GDALClose(dem_ds);
-        return output;
+    // An empty filename means "do not save this output". The raster is still
+    // computed — later stages read it from memory — only the write is skipped.
+    std::string slope_path;
+    if (!slope_filename.empty()) {
+        slope_path = join_path(out_dir, slope_filename + ".tif");
+        if (!write_gtiff_raster(slope_path, ncols, nrows, gt, wkt, slope_data.data(),
+                                GDT_Float32, &kOutNoDataD)) {
+            GDALClose(dem_ds);
+            return output;
+        }
+        std::cout << "Slope saved\n";
+    } else {
+        std::cout << "Slope computed (not saved)\n";
     }
-
-    std::cout << "Slope saved\n";
     auto step2a_end = std::chrono::high_resolution_clock::now();
     auto step2a_time = std::chrono::duration<double>(step2a_end - step2a_start).count();
     std::cout << "  Time: " << std::fixed << std::setprecision(3) << step2a_time << " sec\n";
@@ -547,6 +536,13 @@ LCPAOutput run_lcpa(const std::string& dem_path, const std::string& out_dir,
                 double dh = std::sqrt((current_offs[k].dr * res_y) * (current_offs[k].dr * res_y) +
                     (current_offs[k].dc * res_x) * (current_offs[k].dc * res_x));
                 double dz = (double)dem[to_idx] - (double)z_from;
+                // A move the walker would refuse must not enter the average
+                // either, or the cost surface would advertise a route the
+                // search will never take.
+                if (slope_limit.enabled) {
+                    if (dz > slope_limit.up_tan * dh) continue;
+                    if (-dz > slope_limit.down_tan * dh) continue;
+                }
                 total_cost += apply_cost_function(cost_function, dh, dz);
                 valid_neighbors++;
             }
@@ -561,14 +557,18 @@ LCPAOutput run_lcpa(const std::string& dem_path, const std::string& out_dir,
     for (int i = 0; i < N; ++i)
         if (!passable[i]) cost_surface[i] = kOutNoData;
 
-    std::string cost_path = join_path(out_dir, cost_filename + ".tif");
-    if (!write_gtiff_raster(cost_path, ncols, nrows, gt, wkt, cost_surface.data(),
-                            GDT_Float32, &kOutNoDataD)) {
-        GDALClose(dem_ds);
-        return output;
+    std::string cost_path;
+    if (!cost_filename.empty()) {
+        cost_path = join_path(out_dir, cost_filename + ".tif");
+        if (!write_gtiff_raster(cost_path, ncols, nrows, gt, wkt, cost_surface.data(),
+                                GDT_Float32, &kOutNoDataD)) {
+            GDALClose(dem_ds);
+            return output;
+        }
+        std::cout << "Base cost surface saved\n";
+    } else {
+        std::cout << "Base cost surface computed (not saved)\n";
     }
-
-    std::cout << "Base cost surface saved\n";
     auto step2b_end = std::chrono::high_resolution_clock::now();
     auto step2b_time = std::chrono::duration<double>(step2b_end - step2b_start).count();
     std::cout << "  Time: " << std::fixed << std::setprecision(3) << step2b_time << " sec\n";
@@ -652,30 +652,37 @@ LCPAOutput run_lcpa(const std::string& dem_path, const std::string& out_dir,
 
     // --- Save combined cost surfaces ---
     if (has_any_modifiers) {
-        additional_cost_path = join_path(out_dir, additional_cost_filename + ".tif");
-        if (!write_gtiff_raster(additional_cost_path, ncols, nrows, gt, wkt, cost_multipliers.data(), GDT_Float32)) {
-            GDALClose(dem_ds);
-            return output;
+        if (!additional_cost_filename.empty()) {
+            additional_cost_path = join_path(out_dir, additional_cost_filename + ".tif");
+            if (!write_gtiff_raster(additional_cost_path, ncols, nrows, gt, wkt, cost_multipliers.data(), GDT_Float32)) {
+                GDALClose(dem_ds);
+                return output;
+            }
+            std::cout << "Additional cost surface saved: " << additional_cost_path << "\n";
         }
-        std::cout << "Additional cost surface saved: " << additional_cost_path << "\n";
 
-        std::cout << "Calculating total cost surface (base * multipliers)...\n";
-        std::vector<float> total_cost_surface(N);
+        // The total cost surface is a pure output: cost_multipliers, not this
+        // product, is what the barrier pass and Dijkstra read. So when it is
+        // not saved the multiplication is skipped entirely.
+        if (!total_cost_filename.empty()) {
+            std::cout << "Calculating total cost surface (base * multipliers)...\n";
+            std::vector<float> total_cost_surface(N);
 
 #pragma omp parallel for num_threads(max_threads)
-        for (int i = 0; i < N; ++i) {
-            // cost_surface holds NoData on impassable cells: don't multiply it
-            total_cost_surface[i] = passable[i] ? cost_surface[i] * cost_multipliers[i]
-                                                : kOutNoData;
-        }
+            for (int i = 0; i < N; ++i) {
+                // cost_surface holds NoData on impassable cells: don't multiply it
+                total_cost_surface[i] = passable[i] ? cost_surface[i] * cost_multipliers[i]
+                                                    : kOutNoData;
+            }
 
-        total_cost_path = join_path(out_dir, total_cost_filename + ".tif");
-        if (!write_gtiff_raster(total_cost_path, ncols, nrows, gt, wkt,
-                                total_cost_surface.data(), GDT_Float32, &kOutNoDataD)) {
-            GDALClose(dem_ds);
-            return output;
+            total_cost_path = join_path(out_dir, total_cost_filename + ".tif");
+            if (!write_gtiff_raster(total_cost_path, ncols, nrows, gt, wkt,
+                                    total_cost_surface.data(), GDT_Float32, &kOutNoDataD)) {
+                GDALClose(dem_ds);
+                return output;
+            }
+            std::cout << "Total cost surface saved: " << total_cost_path << "\n";
         }
-        std::cout << "Total cost surface saved: " << total_cost_path << "\n";
     }
 
     // Slope and base cost surface are informational outputs only: free them
@@ -728,7 +735,6 @@ LCPAOutput run_lcpa(const std::string& dem_path, const std::string& out_dir,
     const float INF = std::numeric_limits<float>::infinity();
     std::vector<float> cumulative_cost(N, INF);
     std::vector<int> predecessor(N, -1);
-    std::vector<bool> visited(N, false);
     std::vector<uint32_t> path_raster(N, 0);
 
     // Early termination: stop as soon as every destination is settled
@@ -739,52 +745,82 @@ LCPAOutput run_lcpa(const std::string& dem_path, const std::string& out_dir,
     }
 
     using pq_entry = std::pair<float, int>;
-    std::priority_queue<pq_entry, std::vector<pq_entry>, std::greater<pq_entry>> pq;
 
-    cumulative_cost[origin_idx] = 0.0f;
-    pq.push({ 0.0f, origin_idx });
+    // One relaxation body for both directions.
+    //
+    // `reverse` matters because the cost is anisotropic: walking uphill is not
+    // what walking downhill costs, so the cost *from* a cell to the destination
+    // is not the cost from the destination to that cell. A forward run answers
+    // "what does it cost to reach c from the source"; a reverse run has to
+    // answer "what does it cost to get from c to the source", and that means
+    // pricing the move u -> v while walking the graph outward from v. The
+    // elevation difference is taken the other way round, and the cost modifier
+    // belongs to v, which is where that move lands.
+    //
+    // Getting this wrong would still produce a plausible-looking corridor, just
+    // a wrong one, which is why it is spelled out here.
+    const auto run_dijkstra = [&](int source, bool reverse,
+                                  std::vector<float>& cost_out,
+                                  std::vector<int>* pred_out,
+                                  bool stop_at_destinations) {
+        std::vector<bool> seen(N, false);
+        std::priority_queue<pq_entry, std::vector<pq_entry>, std::greater<pq_entry>> queue;
+        cost_out.assign(N, INF);
+        if (pred_out) pred_out->assign(N, -1);
+        int remaining = stop_at_destinations ? dest_remaining : -1;
 
-    while (!pq.empty()) {
-        auto [cost, v] = pq.top();
-        pq.pop();
+        cost_out[source] = 0.0f;
+        queue.push({ 0.0f, source });
 
-        if (visited[v]) continue;
-        visited[v] = true;
-        if (cost >= INF) break;
+        while (!queue.empty()) {
+            auto [cost, v] = queue.top();
+            queue.pop();
 
-        if (is_dest[v]) {
-            --dest_remaining;
-            if (dest_remaining == 0) break;
-        }
+            if (seen[v]) continue;
+            seen[v] = true;
+            if (cost >= INF) break;
 
-        int r, c;
-        idx2coord(v, ncols, r, c);
+            if (stop_at_destinations && is_dest[v]) {
+                --remaining;
+                if (remaining == 0) break;
+            }
 
-        for (int k = 0; k < num_offs; ++k) {
-            int nr = r + current_offs[k].dr;
-            int nc = c + current_offs[k].dc;
-            if (nr < 0 || nr >= nrows || nc < 0 || nc >= ncols) continue;
+            int r, c;
+            idx2coord(v, ncols, r, c);
 
-            int u = idx(nr, nc, ncols);
-            if (visited[u]) continue;
-            if (!passable[u]) continue;
-            double dh = std::sqrt((current_offs[k].dr * res_y) * (current_offs[k].dr * res_y) +
-                (current_offs[k].dc * res_x) * (current_offs[k].dc * res_x));
-            double dz = (double)dem[u] - (double)dem[v];
-            float edge_cost = apply_cost_function(cost_function, dh, dz);
+            for (int k = 0; k < num_offs; ++k) {
+                int nr = r + current_offs[k].dr;
+                int nc = c + current_offs[k].dc;
+                if (nr < 0 || nr >= nrows || nc < 0 || nc >= ncols) continue;
 
-            // Apply cost multiplier to destination node (if cost modifiers are active)
-            edge_cost *= cost_multipliers[u];
+                int u = idx(nr, nc, ncols);
+                if (seen[u]) continue;
+                if (!passable[u]) continue;
+                double dh = std::sqrt((current_offs[k].dr * res_y) * (current_offs[k].dr * res_y) +
+                    (current_offs[k].dc * res_x) * (current_offs[k].dc * res_x));
+                // Forward: the move is v -> u. Reverse: it is u -> v.
+                double dz = reverse ? (double)dem[v] - (double)dem[u]
+                                    : (double)dem[u] - (double)dem[v];
+                if (slope_limit.enabled) {
+                    if (dz > slope_limit.up_tan * dh) continue;
+                    if (-dz > slope_limit.down_tan * dh) continue;
+                }
+                float edge_cost = apply_cost_function(cost_function, dh, dz);
+                // The multiplier belongs to the cell the move lands on.
+                edge_cost *= cost_multipliers[reverse ? v : u];
 
-            float new_cost = cumulative_cost[v] + edge_cost;
-
-            if (new_cost < cumulative_cost[u]) {
-                cumulative_cost[u] = new_cost;
-                predecessor[u] = v;
-                pq.push({ new_cost, u });
+                float new_cost = cost_out[v] + edge_cost;
+                if (new_cost < cost_out[u]) {
+                    cost_out[u] = new_cost;
+                    if (pred_out) (*pred_out)[u] = v;
+                    queue.push({ new_cost, u });
+                }
             }
         }
-    }
+    };
+
+    run_dijkstra(origin_idx, /*reverse=*/false, cumulative_cost, &predecessor,
+                 /*stop_at_destinations=*/true);
 
     std::cout << "Dijkstra completed\n";
     auto step3_end = std::chrono::high_resolution_clock::now();
@@ -793,34 +829,67 @@ LCPAOutput run_lcpa(const std::string& dem_path, const std::string& out_dir,
 
     std::cout << "\nTracing paths and generating output...\n";
 
+    // Either path output can be skipped by leaving its filename empty, but
+    // never both at once — run_lcpa_mode refuses a blank pair, since that
+    // would compute the paths and then throw them away.
+    const bool want_lines = !path_lines_filename.empty();
+    const bool want_raster = !path_raster_filename.empty();
+
     // Create shapefile for paths
-    std::string shp_path = join_path(out_dir, path_lines_filename + ".shp");
-    OGRSpatialReference osr;
-    osr.importFromWkt(wkt);
+    std::string shp_path;
+    GDALDataset* shp_ds = nullptr;
+    OGRLayer* layer = nullptr;
+    if (want_lines) {
+        shp_path = join_path(out_dir, path_lines_filename + ".shp");
+        OGRSpatialReference osr;
+        osr.importFromWkt(wkt);
 
-    GDALDriver* shp_drv = GetGDALDriverManager()->GetDriverByName("ESRI Shapefile");
-    if (!shp_drv) {
-        std::cout << "ERROR: ESRI Shapefile driver not available in this GDAL build\n";
-        GDALClose(dem_ds);
-        return output;
-    }
-    GDALDataset* shp_ds = shp_drv->Create(shp_path.c_str(), 0, 0, 0, GDT_Unknown, nullptr);
-    if (!shp_ds) {
-        std::cout << "ERROR: Cannot create path lines shapefile: " << shp_path << "\n";
-        std::cout << "       Check that the output directory is writable and the file is not open elsewhere.\n";
-        GDALClose(dem_ds);
-        return output;
-    }
-    OGRLayer* layer = shp_ds->CreateLayer("paths", &osr, wkbLineString, nullptr);
-    if (!layer) {
-        std::cout << "ERROR: Cannot create layer in path lines shapefile\n";
-        GDALClose(shp_ds);
-        GDALClose(dem_ds);
-        return output;
-    }
+        GDALDriver* shp_drv = GetGDALDriverManager()->GetDriverByName("ESRI Shapefile");
+        if (!shp_drv) {
+            std::cout << "ERROR: ESRI Shapefile driver not available in this GDAL build\n";
+            GDALClose(dem_ds);
+            return output;
+        }
+        shp_ds = shp_drv->Create(shp_path.c_str(), 0, 0, 0, GDT_Unknown, nullptr);
+        if (!shp_ds) {
+            std::cout << "ERROR: Cannot create path lines shapefile: " << shp_path << "\n";
+            std::cout << "       Check that the output directory is writable and the file is not open elsewhere.\n";
+            GDALClose(dem_ds);
+            return output;
+        }
+        layer = shp_ds->CreateLayer("paths", &osr, wkbLineString, nullptr);
+        if (!layer) {
+            std::cout << "ERROR: Cannot create layer in path lines shapefile\n";
+            GDALClose(shp_ds);
+            GDALClose(dem_ds);
+            return output;
+        }
 
-    OGRFieldDefn oField("PathID", OFTInteger);
-    layer->CreateField(&oField);
+        // What each line is, not just that it exists. A polyline on its own
+        // cannot say where it started, where it ended or what it cost, and that
+        // is exactly what anyone opening the layer in a GIS wants to know.
+        // Shapefile field names are capped at 10 characters by the format.
+        struct FieldSpec { const char* name; OGRFieldType type; int width; int precision; };
+        const FieldSpec fields[] = {
+            { "PathID",   OFTInteger, 0,  0 },   // 0-based, matches the raster order
+            { "OriginX",  OFTReal,    24, 6 },   // map units of the DEM's CRS
+            { "OriginY",  OFTReal,    24, 6 },
+            { "DestX",    OFTReal,    24, 6 },
+            { "DestY",    OFTReal,    24, 6 },
+            { "OriginRC", OFTString,  24, 0 },   // "row,col", for tracing back
+            { "DestRC",   OFTString,  24, 0 },
+            { "TotalCost", OFTReal,   24, 6 },   // in CostUnits, below
+            { "CostUnits", OFTString, 12, 0 },   // "hours" or "kJ/kg"
+            { "Length_m",  OFTReal,   24, 3 },   // along the polyline, 3D-free
+            { "Cells",     OFTInteger, 0, 0 },   // number of cells traversed
+        };
+        for (const FieldSpec& f : fields) {
+            OGRFieldDefn def(f.name, f.type);
+            if (f.width > 0) def.SetWidth(f.width);
+            if (f.precision > 0) def.SetPrecision(f.precision);
+            layer->CreateField(&def);
+        }
+    }
 
     int path_count = 0;
     int total_path_cells = 0;
@@ -849,20 +918,23 @@ LCPAOutput run_lcpa(const std::string& dem_path, const std::string& out_dir,
         path.push_back(origin_idx);
         std::reverse(path.begin(), path.end());
 
-        // Add to raster
-        for (int node : path) {
-            path_raster[node]++;
+        // Add to raster. Nothing else reads path_raster, so when it is not
+        // being saved the accumulation (and its buffer sweep) is skipped.
+        if (want_raster) {
+            for (int node : path) {
+                path_raster[node]++;
 
-            // Buffer around path
-            int r, c;
-            idx2coord(node, ncols, r, c);
-            for (int dr = -buffer_radius; dr <= buffer_radius; ++dr) {
-                for (int dc = -buffer_radius; dc <= buffer_radius; ++dc) {
-                    if (dr == 0 && dc == 0) continue;
-                    int nr = r + dr;
-                    int nc = c + dc;
-                    if (nr >= 0 && nr < nrows && nc >= 0 && nc < ncols) {
-                        path_raster[idx(nr, nc, ncols)]++;
+                // Buffer around path
+                int r, c;
+                idx2coord(node, ncols, r, c);
+                for (int dr = -buffer_radius; dr <= buffer_radius; ++dr) {
+                    for (int dc = -buffer_radius; dc <= buffer_radius; ++dc) {
+                        if (dr == 0 && dc == 0) continue;
+                        int nr = r + dr;
+                        int nc = c + dc;
+                        if (nr >= 0 && nr < nrows && nc >= 0 && nc < ncols) {
+                            path_raster[idx(nr, nc, ncols)]++;
+                        }
                     }
                 }
             }
@@ -875,32 +947,155 @@ LCPAOutput run_lcpa(const std::string& dem_path, const std::string& out_dir,
         // without the half-cell offset every vertex sat on the top-left
         // corner and the whole shapefile was shifted ~half a resolution
         // step NW of the path raster.
-        OGRLineString line;
-        for (int node : path) {
-            int r, c;
-            idx2coord(node, ncols, r, c);
-            double x = gt[0] + (c + 0.5) * gt[1];
-            double y = gt[3] + (r + 0.5) * gt[5];
-            line.addPoint(x, y);
+        if (layer) {
+            OGRLineString line;
+            double length_m = 0.0;
+            double prev_x = 0.0, prev_y = 0.0;
+            bool have_prev = false;
+            for (int node : path) {
+                int r, c;
+                idx2coord(node, ncols, r, c);
+                double x = gt[0] + (c + 0.5) * gt[1];
+                double y = gt[3] + (r + 0.5) * gt[5];
+                line.addPoint(x, y);
+                if (have_prev) {
+                    const double dx = x - prev_x, dy = y - prev_y;
+                    length_m += std::sqrt(dx * dx + dy * dy);
+                }
+                prev_x = x;
+                prev_y = y;
+                have_prev = true;
+            }
+
+            // Planimetric length, in the map units of the DEM's CRS: it is the
+            // distance walked on the map, not along the terrain, so on steep
+            // ground the real walk is longer. The cost already accounts for the
+            // climb; this field does not, and should not be read as if it did.
+            int orow, ocol, drow, dcol;
+            idx2coord(origin_idx, ncols, orow, ocol);
+            idx2coord(dest_idx, ncols, drow, dcol);
+            const double ox = gt[0] + (ocol + 0.5) * gt[1];
+            const double oy = gt[3] + (orow + 0.5) * gt[5];
+            const double dx_ = gt[0] + (dcol + 0.5) * gt[1];
+            const double dy_ = gt[3] + (drow + 0.5) * gt[5];
+
+            OGRFeature* feature = OGRFeature::CreateFeature(layer->GetLayerDefn());
+            feature->SetField("PathID", path_count);
+            feature->SetField("OriginX", ox);
+            feature->SetField("OriginY", oy);
+            feature->SetField("DestX", dx_);
+            feature->SetField("DestY", dy_);
+            feature->SetField("OriginRC",
+                              (std::to_string(orow) + "," + std::to_string(ocol)).c_str());
+            feature->SetField("DestRC",
+                              (std::to_string(drow) + "," + std::to_string(dcol)).c_str());
+            feature->SetField("TotalCost", (double)cumulative_cost[dest_idx]);
+            feature->SetField("CostUnits", cost_function_units(cost_function));
+            feature->SetField("Length_m", length_m);
+            feature->SetField("Cells", (int)path.size());
+            feature->SetGeometry(&line);
+            layer->CreateFeature(feature);
+            OGRFeature::DestroyFeature(feature);
+        }
+        // Counted whether or not the shapefile is written: the run report
+        // reads it, and PathID keeps the same numbering as before.
+        ++path_count;
+    }
+
+    if (shp_ds)
+        GDALClose(shp_ds);
+
+    // ---- Cost corridor ----
+    // A least-cost path is one pixel wide and says nothing about how much
+    // choice there was. The corridor does: for every cell it asks what a
+    // detour through that cell would cost, as
+    //
+    //     excess(c) = ( cost(origin -> c) + cost(c -> dest) - best ) / best
+    //
+    // expressed as a percentage. Zero on the optimal path itself. A narrow
+    // corridor means the terrain dictated the route; a wide one means the path
+    // drawn on the map is one of many nearly equal options and should not be
+    // read as *the* route.
+    //
+    // The second term needs the cost *to* the destination, which on anisotropic
+    // terrain is a different question from the cost *from* it — hence the
+    // reverse run.
+    std::string corridor_path;
+    if (want_corridor && !usable_destinations.empty()) {
+        std::cout << "\nComputing cost corridor (" << corridor_width_percent
+                  << "% above the optimum)...\n";
+        const auto corridor_start = std::chrono::high_resolution_clock::now();
+
+        std::vector<float> best_excess(N, INF);
+        std::vector<float> to_dest;
+        int done = 0;
+        for (int dest_idx : usable_destinations) {
+            const float best = cumulative_cost[dest_idx];
+            if (!(best < INF) || !(best > 0.0f)) continue;   // unreachable, or degenerate
+            run_dijkstra(dest_idx, /*reverse=*/true, to_dest, nullptr,
+                         /*stop_at_destinations=*/false);
+            for (int i = 0; i < N; ++i) {
+                if (!passable[i]) continue;
+                const float there = cumulative_cost[i];
+                const float back = to_dest[i];
+                if (!(there < INF) || !(back < INF)) continue;
+                const float excess = ((there + back) - best) / best * 100.0f;
+                if (excess < best_excess[i]) best_excess[i] = excess;
+            }
+            ++done;
+            print_progress(done, (int)usable_destinations.size(), -1.0, 40, 0);
+        }
+        std::cout << "\n";
+
+        // Outside the chosen width the answer is "not in the corridor", which
+        // is nodata rather than a very large number: a GIS then draws nothing
+        // there instead of stretching the palette to fit the whole map.
+        const float kCorridorNoData = -9999.0f;
+        std::vector<float> corridor(N, kCorridorNoData);
+        int64_t inside = 0;
+        for (int i = 0; i < N; ++i) {
+            float excess = best_excess[i];
+            if (!(excess < INF)) continue;
+            // On the optimal path itself the two halves should add up to
+            // exactly the best cost, so the excess is zero. In float they add
+            // up to very slightly less, and a strict "must not be negative"
+            // test threw away precisely the cells the corridor is built
+            // around. The negative values are rounding, not information.
+            if (excess < 0.0f) excess = 0.0f;
+            if (excess <= (float)corridor_width_percent) {
+                corridor[i] = excess;
+                ++inside;
+            }
         }
 
-        OGRFeature* feature = OGRFeature::CreateFeature(layer->GetLayerDefn());
-        feature->SetField("PathID", path_count++);
-        feature->SetGeometry(&line);
-        layer->CreateFeature(feature);
-        OGRFeature::DestroyFeature(feature);
+        corridor_path = join_path(out_dir, corridor_filename + ".tif");
+        const double nodata_value = kCorridorNoData;
+        if (!write_gtiff_raster(corridor_path, ncols, nrows, gt, wkt, corridor.data(),
+                                GDT_Float32, &nodata_value)) {
+            GDALClose(dem_ds);
+            return output;
+        }
+        const double corridor_time = std::chrono::duration<double>(
+            std::chrono::high_resolution_clock::now() - corridor_start).count();
+        std::cout << "Corridor saved: " << inside << " cells within "
+                  << corridor_width_percent << "% of the optimum ("
+                  << std::fixed << std::setprecision(1)
+                  << (100.0 * (double)inside / (double)N) << "% of the raster), "
+                  << std::setprecision(2) << corridor_time << " s\n";
     }
-
-    GDALClose(shp_ds);
 
     // Write path raster
-    std::string path_raster_path = join_path(out_dir, path_raster_filename + ".tif");
-    if (!write_gtiff_raster(path_raster_path, ncols, nrows, gt, wkt, path_raster.data(), GDT_UInt32)) {
-        GDALClose(dem_ds);
-        return output;
+    std::string path_raster_path;
+    if (want_raster) {
+        path_raster_path = join_path(out_dir, path_raster_filename + ".tif");
+        if (!write_gtiff_raster(path_raster_path, ncols, nrows, gt, wkt, path_raster.data(), GDT_UInt32)) {
+            GDALClose(dem_ds);
+            return output;
+        }
+        std::cout << "Paths saved\n";
+    } else {
+        std::cout << "Path raster not saved (skipped)\n";
     }
-
-    std::cout << "Paths saved\n";
 
     auto global_end = std::chrono::high_resolution_clock::now();
     double global_time = std::chrono::duration<double>(global_end - global_start).count();
@@ -912,10 +1107,87 @@ LCPAOutput run_lcpa(const std::string& dem_path, const std::string& out_dir,
     output.total_cost_path = total_cost_path;
     output.path_raster_path = path_raster_path;
     output.path_lines_path = shp_path;
+    output.corridor_path = corridor_path;
     output.num_destinations = (int)usable_destinations.size();
     output.total_path_cells = total_path_cells;
     output.total_cost = total_cost_accumulated;
     output.time_seconds = global_time;
+
+    // ---- Run manifest ----
+    // See the FETE end of run for why this sits here rather than at the start.
+    if (g_write_manifest) {
+        manifest::Manifest mf("LCPA");
+        // The run measured itself; the manifest must not measure the
+        // fraction of a second it takes to build.
+        mf.setElapsed(global_time);
+
+        mf.section("inputs");
+        mf.inputFile("DEM", dem_path);
+        mf.inputFile("origin", origin_path);
+        mf.inputFile("destinations", destinations_path);
+        mf.inputFile("cost modifiers (vector)", cost_modifiers_path);
+        mf.inputFile("cost modifiers (raster)", cost_raster_path);
+
+        mf.section("settings");
+        mf.kv("neighbours", (long long)num_neighbours);
+        mf.kv("cost function", std::string(cost_function_name(cost_function)));
+        mf.kv("cost units", std::string(cost_function_units(cost_function)));
+        mf.kv("slope units", std::string(slope_in_degrees ? "degrees" : "percent"));
+        if (want_corridor) {
+            mf.kv("cost corridor width %", corridor_width_percent);
+        } else {
+            mf.kv("cost corridor", std::string("(not used)"));
+        }
+        if (slope_limit.enabled) {
+            mf.kv("max uphill slope", max_slope_up_deg);
+            mf.kv("max downhill slope", max_slope_down_deg);
+        } else {
+            mf.kv("slope cut-off", std::string("(not used)"));
+        }
+        mf.kv("path smoothing buffer", (long long)buffer_radius);
+        if (!cost_modifiers_path.empty())
+            mf.kv("polyline buffer", (long long)polyline_buffer_radius);
+        const bool barriers_on = barrier_threshold > 0.0;
+        mf.kv("impassable barriers", barriers_on);
+        if (barriers_on)
+            mf.kv("barrier threshold", barrier_threshold, 1);
+
+        mf.section("hardware");
+        mf.kv("CPU", get_cpu_model());
+        mf.kv("threads used", (long long)max_threads);
+        mf.kv("RAM ceiling (MB)", (long long)max_ram_mb);
+
+        mf.section("results");
+        mf.kv("grid", std::to_string(ncols) + " x " + std::to_string(nrows)
+                          + " = " + std::to_string((long long)ncols * nrows) + " cells");
+        mf.kv("destinations requested", (long long)destination_indices.size());
+        mf.kv("destinations reached", (long long)usable_destinations.size());
+        mf.kv("paths written", (long long)path_count);
+        mf.kv("total path cells", (long long)total_path_cells);
+        mf.kv("total accumulated cost", total_cost_accumulated, 2);
+        mf.kv("computation time (s)", global_time, 1);
+
+        mf.section("outputs");
+        mf.outputFile("paths raster", path_raster_path);
+        mf.outputFile("paths vector", shp_path);
+        mf.outputFile("slope", slope_path);
+        mf.outputFile("cost surface", cost_path);
+        mf.outputFile("additional cost", additional_cost_path);
+        mf.outputFile("total cost", total_cost_path);
+
+        // Named after whichever main output the user asked for: the raster is
+        // optional here, and so is the shapefile, but never both.
+        const std::string primary = !path_raster_filename.empty() ? path_raster_filename
+                                                                  : path_lines_filename;
+        const std::string mf_path = manifest::pathFor(out_dir, primary);
+        std::string mf_error;
+        if (mf.write(mf_path, &mf_error)) {
+            std::cout << "Run manifest: " << mf_path << "\n";
+        } else {
+            std::cout << "WARNING: the run manifest could not be written ("
+                      << mf_error << ")\n";
+        }
+    }
 
     GDALClose(dem_ds);
 
@@ -926,7 +1198,7 @@ LCPAOutput run_lcpa(const std::string& dem_path, const std::string& out_dir,
 
 int run_lcpa_mode() {
     std::cout << "\n" << std::string(70, '=') << "\n";
-    center_text("TRAJECTA v1.0.0 - A SPATIAL MOVEMENT ANALYSIS SOFTWARE", 70);
+    center_text("TRAJECTA v1.0.1 - A SPATIAL MOVEMENT ANALYSIS SOFTWARE", 70);
     center_text("Least-Cost Path Analysis (LCPA)", 70);
     center_text("by Stefano Apra, ISAW - NYU", 70);
     std::cout << std::string(70, '=') << "\n";
@@ -951,7 +1223,7 @@ int run_lcpa_mode() {
     std::cout << "  Total RAM: " << (total_ram_mb / 1024) << " GB\n\n";
 
     int max_threads = std::max(1, max_available_threads - 4);
-    int64_t max_ram_mb = 4096;
+    int64_t max_ram_mb = 8192;
 
     std::string dem_path = saved_config.dem_path;
     std::string out_dir = saved_config.out_dir;
@@ -972,6 +1244,15 @@ int run_lcpa_mode() {
     double barrier_threshold = 1000.0;
     int num_neighbours = 16;
     bool slope_in_degrees = true;
+    // Slope cut-off, off unless asked for: a limit nobody chose would
+    // silently change every result.
+    bool slope_limit_enabled = false;
+    double max_slope_up_deg = 30.0;
+    double max_slope_down_deg = 30.0;
+    // Cost corridor: off unless asked for, one extra search per destination.
+    bool want_corridor = false;
+    double corridor_width_percent = 10.0;
+    std::string corridor_filename = "cost_corridor";
     CostFunctionType cost_function = TOBLER_WHITE_2015;
 
     // Every LCPA run (including re-runs) starts from here: thread selection,
@@ -1011,7 +1292,8 @@ int run_lcpa_mode() {
             print_question("Enter maximum RAM to allocate (MB):\n");
             std::cout << "  Total available: " << total_ram_mb << " MB (~" << (total_ram_mb / 1024) << " GB)\n";
             std::cout << "  Example: 4096 (for 4 GB), 8192 (for 8 GB)\n";
-            std::cout << "  Recommended: ~60% of available RAM\n";
+            std::cout << "  Recommended: at least 8192 MB. The analysis needs far less memory\n";
+            std::cout << "  than most machines have, and a higher ceiling does not speed it up.\n";
             std::cout << "> ";
             safe_getline(ram_input);
 
@@ -1027,12 +1309,53 @@ int run_lcpa_mode() {
                 if (max_ram_mb < 512) max_ram_mb = 512;
             }
             catch (...) {
-                max_ram_mb = 4096;
+                max_ram_mb = 8192;
             }
             break;
         }
 
         std::cout << "Using maximum " << max_ram_mb << " MB RAM\n";
+
+        // ---- Run manifest (opt-out) ----
+        // Same question, same wording and same default as FETE: it is the same
+        // setting, and the interface drives both through one checkbox.
+        while (true) {
+            print_question("\nWrite a run manifest next to the results? (yes/no):\n");
+            std::cout << "  A text file recording every input, setting and output of this\n";
+            std::cout << "  run, so the results can be traced back and reproduced later.\n";
+            std::cout << "  Costs a few seconds: each input file is hashed.\n";
+            std::cout << "  Default: YES\n";
+            std::cout << "> ";
+            std::string mf_input;
+            safe_getline(mf_input);
+
+            if (check_exit_command(mf_input)) {
+                return 0;
+            }
+            if (check_help_command(mf_input)) {
+                continue;
+            }
+            // Normalised here rather than through main_fete.cpp's helpers,
+            // which are file-local: leading spaces and capitals are the two
+            // ways a typed answer differs from the expected one.
+            std::string mf;
+            for (char c : mf_input) {
+                if (mf.empty() && (c == ' ' || c == '\t')) continue;
+                mf += (char)std::tolower((unsigned char)c);
+            }
+            while (!mf.empty() && (mf.back() == ' ' || mf.back() == '\t' || mf.back() == '\r'))
+                mf.pop_back();
+            if (mf.empty() || mf == "yes" || mf == "y") {
+                g_write_manifest = true;
+                break;
+            }
+            if (mf == "no" || mf == "n") {
+                g_write_manifest = false;
+                break;
+            }
+            std::cout << "ERROR: Please answer yes or no\n";
+        }
+
         std::cout << std::string(70, '=') << "\n\n";
         std::cout << "\n";
 
@@ -1305,6 +1628,7 @@ int run_lcpa_mode() {
                 std::cout << "  3) 24-connectivity (extended)\n";
                 std::cout << "  4) 32-connectivity (more extended)\n";
                 std::cout << "  5) 64-connectivity (full extended)\n";
+                std::cout << "  6) Custom (enter the number of directions yourself)\n";
                 std::cout << "  "; print_default("Leave blank for default (16)"); std::cout << "\n";
                 std::cout << "> ";
                 std::string neighbours_input;
@@ -1320,6 +1644,10 @@ int run_lcpa_mode() {
                     case 3: num_neighbours = 24; break;
                     case 4: num_neighbours = 32; break;
                     case 5: num_neighbours = 64; break;
+                    case 6: {
+                        if (!ask_custom_neighbours(num_neighbours)) return 0;
+                        break;
+                    }
                     default: num_neighbours = 16; break;
                     }
                 }
@@ -1333,7 +1661,10 @@ int run_lcpa_mode() {
                 print_question("\nSelect cost function:\n");
                 std::cout << "  1) Modified Tobler's Function (White 2015) "; print_default("[DEFAULT]"); std::cout << "\n";
                 std::cout << "  2) Marquez-Perez et al. (2017)\n";
-                std::cout << "  3) Irmischer and Clarke (2017)\n";
+                std::cout << "  3) Irmischer and Clarke (2017), on-path male\n";
+                std::cout << "  4) Herzog (2013) metabolic cost  -- energy, kJ/kg, not hours\n";
+                std::cout << "  5) Campbell et al. (2019), 5th percentile (ordinary hiking)\n";
+                std::cout << "  6) Campbell et al. (2019), 50th percentile (includes joggers)\n";
                 std::cout << "  "; print_default("Leave blank for default"); std::cout << "\n";
                 std::cout << "> ";
                 std::string cf_input;
@@ -1345,6 +1676,9 @@ int run_lcpa_mode() {
                     int choice = std::stoi(cf_input);
                     if (choice == 2)      cost_function = MARQUEZ_PEREZ_ET_AL_2017;
                     else if (choice == 3) cost_function = IRMISCHER_CLARKE_2017;
+                    else if (choice == 4) cost_function = HERZOG_2013;
+                    else if (choice == 5) cost_function = CAMPBELL_2019_P5;
+                    else if (choice == 6) cost_function = CAMPBELL_2019_P50;
                     else                  cost_function = TOBLER_WHITE_2015;
                 }
                 catch (...) {
@@ -1353,7 +1687,20 @@ int run_lcpa_mode() {
                 break;
             }
 
-            slope_in_degrees = (cost_function == TOBLER_WHITE_2015);
+            if (cost_function == HERZOG_2013) {
+                std::cout << "NOTE: this cost function measures energy. Every cost in this run,\n";
+                std::cout << "      including the cost surfaces, is in kJ per kg of walker,\n";
+                std::cout << "      not in hours, and cannot be compared with the other models.\n";
+            }
+
+            if (!ask_slope_limit(slope_limit_enabled, max_slope_up_deg, max_slope_down_deg))
+                return 0;
+
+            // Only the unit of the exported slope raster: Tobler is usually read
+            // in degrees and Campbell is defined in them, the others in percent.
+            slope_in_degrees = (cost_function == TOBLER_WHITE_2015
+                                || cost_function == CAMPBELL_2019_P5
+                                || cost_function == CAMPBELL_2019_P50);
 
             while (true) {
                 print_question("\nSelect buffer radius (cells) for path smoothing:\n");
@@ -1382,6 +1729,7 @@ int run_lcpa_mode() {
             while (true) {
                 std::cout << "\nEnter slope raster filename (without extension):\n";
                 std::cout << "  Example: slope\n";
+                std::cout << "  Leave blank to skip this output\n";
                 std::cout << "> ";
                 std::string input;
                 safe_getline(input);
@@ -1391,8 +1739,8 @@ int run_lcpa_mode() {
                     continue;
                 }
                 if (input.empty()) {
-                    std::cout << "ERROR: Slope filename cannot be empty!\n";
-                    continue;
+                    slope_filename.clear();  // computed, but not written
+                    break;
                 }
                 if (!valid_output_filename(input)) { print_filename_error(); continue; }
                 slope_filename = input;
@@ -1406,6 +1754,7 @@ int run_lcpa_mode() {
                 std::cout << "\nEnter base cost surface raster filename (without extension):\n";
                 std::cout << "  This is the cost surface calculated from slope * cost function\n";
                 std::cout << "  Example: cost_surface\n";
+                std::cout << "  Leave blank to skip this output\n";
                 std::cout << "> ";
                 std::string input;
                 safe_getline(input);
@@ -1415,8 +1764,8 @@ int run_lcpa_mode() {
                     continue;
                 }
                 if (input.empty()) {
-                    std::cout << "ERROR: Cost surface filename cannot be empty!\n";
-                    continue;
+                    cost_filename.clear();  // computed, but not written
+                    break;
                 }
                 if (!valid_output_filename(input)) { print_filename_error(); continue; }
                 cost_filename = input;
@@ -1436,6 +1785,7 @@ int run_lcpa_mode() {
                     std::cout << "\nEnter additional cost surface raster filename (without extension):\n";
                     std::cout << "  This is the rasterized polylines with cost multipliers\n";
                     std::cout << "  Example: cost_surface_additional\n";
+                    std::cout << "  Leave blank to skip this output\n";
                     std::cout << "> ";
                     std::string input;
                     safe_getline(input);
@@ -1445,8 +1795,8 @@ int run_lcpa_mode() {
                         continue;
                     }
                     if (input.empty()) {
-                        std::cout << "ERROR: Additional cost surface filename cannot be empty!\n";
-                        continue;
+                        additional_cost_filename.clear();  // computed, but not written
+                        break;
                     }
                     if (!valid_output_filename(input)) { print_filename_error(); continue; }
                     additional_cost_filename = input;
@@ -1460,6 +1810,7 @@ int run_lcpa_mode() {
                     std::cout << "\nEnter total cost surface raster filename (without extension):\n";
                     std::cout << "  This is the final cost surface (base * additional)\n";
                     std::cout << "  Example: cost_surface_total\n";
+                    std::cout << "  Leave blank to skip this output\n";
                     std::cout << "> ";
                     std::string input;
                     safe_getline(input);
@@ -1469,8 +1820,8 @@ int run_lcpa_mode() {
                         continue;
                     }
                     if (input.empty()) {
-                        std::cout << "ERROR: Total cost surface filename cannot be empty!\n";
-                        continue;
+                        total_cost_filename.clear();  // not computed and not written
+                        break;
                     }
                     if (!valid_output_filename(input)) { print_filename_error(); continue; }
                     total_cost_filename = input;
@@ -1484,6 +1835,7 @@ int run_lcpa_mode() {
             while (true) {
                 std::cout << "\nEnter path raster filename (without extension):\n";
                 std::cout << "  Example: raster_lcps\n";
+                std::cout << "  Leave blank to skip this output\n";
                 std::cout << "> ";
                 std::string input;
                 safe_getline(input);
@@ -1493,8 +1845,10 @@ int run_lcpa_mode() {
                     continue;
                 }
                 if (input.empty()) {
-                    std::cout << "ERROR: Path raster filename cannot be empty!\n";
-                    continue;
+                    // Allowed on its own: the path lines prompt that follows
+                    // refuses to leave both path outputs blank.
+                    path_raster_filename.clear();
+                    break;
                 }
                 if (!valid_output_filename(input)) { print_filename_error(); continue; }
                 path_raster_filename = input;
@@ -1508,6 +1862,10 @@ int run_lcpa_mode() {
                 std::cout << "\nEnter path lines shapefile filename (without extension):\n";
                 std::cout << "  (This will contain polyline geometries of the paths)\n";
                 std::cout << "  Example: LCPS_vectors\n";
+                if (!path_raster_filename.empty())
+                    std::cout << "  Leave blank to skip this output\n";
+                else
+                    std::cout << "  Required: the path raster was skipped\n";
                 std::cout << "> ";
                 std::string input;
                 safe_getline(input);
@@ -1517,13 +1875,95 @@ int run_lcpa_mode() {
                     continue;
                 }
                 if (input.empty()) {
-                    std::cout << "ERROR: Path lines filename cannot be empty!\n";
-                    continue;
+                    // Skipping both would compute every path and then discard
+                    // it, which is never what the user meant.
+                    if (path_raster_filename.empty()) {
+                        std::cout << "ERROR: at least one of the path raster and the path lines "
+                                     "shapefile must be saved!\n";
+                        continue;
+                    }
+                    path_lines_filename.clear();
+                    break;
                 }
                 if (!valid_output_filename(input)) { print_filename_error(); continue; }
                 path_lines_filename = input;
                 if (path_lines_filename.length() >= 4 && path_lines_filename.substr(path_lines_filename.length() - 4) == ".shp") {
                     path_lines_filename = path_lines_filename.substr(0, path_lines_filename.length() - 4);
+                }
+                break;
+            }
+        }
+
+        // ===== COST CORRIDOR =====
+        while (true) {
+            print_question("\nAlso compute the cost corridor? (yes/no):\n");
+            std::cout << "  A least-cost path is one pixel wide and cannot say how much\n";
+            std::cout << "  choice there was. The corridor shows every cell a detour could\n";
+            std::cout << "  pass through for a given extra cost: narrow means the terrain\n";
+            std::cout << "  dictated the route, wide means the line is one of many.\n";
+            std::cout << "  It costs one extra search per destination.\n";
+            std::cout << "  "; print_default("Default: no"); std::cout << "\n";
+            std::cout << "> ";
+            std::string input;
+            safe_getline(input);
+            if (check_exit_command(input)) return 0;
+            if (check_help_command(input)) { std::cout << HELP_TEXT_LCPA; continue; }
+            // Same normalisation as the manifest prompt above: main_fete.cpp's
+            // helpers are file-local, and leading spaces and capitals are the
+            // two ways a typed answer differs from the expected one.
+            std::string a;
+            for (char c : input) {
+                if (a.empty() && (c == ' ' || c == '\t')) continue;
+                a += (char)std::tolower((unsigned char)c);
+            }
+            while (!a.empty() && (a.back() == ' ' || a.back() == '\t' || a.back() == '\r'))
+                a.pop_back();
+            if (a.empty() || a == "no" || a == "n") { want_corridor = false; break; }
+            if (a != "yes" && a != "y") {
+                std::cout << "ERROR: Please enter 'yes' or 'no'\n";
+                continue;
+            }
+            want_corridor = true;
+            break;
+        }
+        if (want_corridor) {
+            while (true) {
+                print_question("\nCorridor width, as a percentage above the optimum (1-500):\n");
+                std::cout << "  5 keeps only what is nearly as cheap as the best route;\n";
+                std::cout << "  25 shows the broad band of plausible alternatives.\n";
+                std::cout << "  "; print_default("Default: 10"); std::cout << "\n";
+                std::cout << "> ";
+                std::string input;
+                safe_getline(input);
+                if (check_exit_command(input)) return 0;
+                if (check_help_command(input)) { std::cout << HELP_TEXT_LCPA; continue; }
+                if (input.empty()) { corridor_width_percent = 10.0; break; }
+                try {
+                    const double v = std::stod(input);
+                    if (v < 1.0 || v > 500.0) {
+                        std::cout << "ERROR: Enter a percentage between 1 and 500\n";
+                        continue;
+                    }
+                    corridor_width_percent = v;
+                    break;
+                } catch (...) {
+                    std::cout << "ERROR: Invalid number\n";
+                }
+            }
+            while (true) {
+                std::cout << "\nEnter cost corridor raster filename (without extension):\n";
+                std::cout << "  Example: cost_corridor\n";
+                std::cout << "> ";
+                std::string input;
+                safe_getline(input);
+                if (check_exit_command(input)) return 0;
+                if (check_help_command(input)) { std::cout << HELP_TEXT_LCPA; continue; }
+                if (input.empty()) { corridor_filename = "cost_corridor"; break; }
+                if (!valid_output_filename(input)) { print_filename_error(); continue; }
+                corridor_filename = input;
+                if (corridor_filename.length() >= 4
+                    && corridor_filename.substr(corridor_filename.length() - 4) == ".tif") {
+                    corridor_filename = corridor_filename.substr(0, corridor_filename.length() - 4);
                 }
                 break;
             }
@@ -1537,14 +1977,32 @@ int run_lcpa_mode() {
         std::cout << "  Output dir: " << out_dir << "\n";
         std::cout << "  Origin coordinates: (" << origin_x << ", " << origin_y << ")\n";
         std::cout << "  Destination coordinates: " << destination_coords.size() << " point(s)\n";
-        std::cout << "  Slope filename: " << slope_filename << ".tif\n";
-        std::cout << "  Cost filename: " << cost_filename << ".tif\n";
-        std::cout << "  Path raster filename: " << path_raster_filename << ".tif\n";
-        std::cout << "  Path lines filename: " << path_lines_filename << ".shp\n";
+        // An empty name means the file is not written at all, so say so rather
+        // than printing a bare ".tif".
+        auto print_output_name = [](const char* label, const std::string& name,
+                                    const char* ext) {
+            std::cout << "  " << label << ": "
+                      << (name.empty() ? std::string("not saved") : name + ext) << "\n";
+        };
+        print_output_name("Slope filename", slope_filename, ".tif");
+        print_output_name("Cost filename", cost_filename, ".tif");
+        if (!cost_modifiers_path.empty() || !cost_raster_path.empty()) {
+            print_output_name("Additional cost filename", additional_cost_filename, ".tif");
+            print_output_name("Total cost filename", total_cost_filename, ".tif");
+        }
+        print_output_name("Path raster filename", path_raster_filename, ".tif");
+        print_output_name("Path lines filename", path_lines_filename, ".shp");
         std::cout << "  Buffer radius: " << buffer_radius << " cells\n";
         std::cout << "  Neighbours: " << num_neighbours << "-connectivity\n";
         std::cout << "  Slope units: " << (slope_in_degrees ? "degrees" : "percentage") << "\n";
-        std::cout << "  Cost function: " << (cost_function == TOBLER_WHITE_2015 ? "Modified Tobler (White 2015)" : (cost_function == MARQUEZ_PEREZ_ET_AL_2017 ? "Marquez-Perez et al. (2017)" : "Irmischer and Clarke (2017)")) << "\n";
+        std::cout << "  Cost function: " << cost_function_name(cost_function) << "\n";
+        std::cout << "  Cost units: " << cost_function_units(cost_function) << "\n";
+        if (slope_limit_enabled) {
+            std::cout << "  Slope cut-off: refuse above " << max_slope_up_deg
+                      << " deg uphill / " << max_slope_down_deg << " deg downhill\n";
+        } else {
+            std::cout << "  Slope cut-off: none\n";
+        }
         std::cout << "  Max threads: " << max_threads << "\n";
         std::cout << "  Max RAM: " << max_ram_mb << " MB\n";
         std::cout << std::string(70, '=') << "\n\n";
@@ -1580,7 +2038,10 @@ int run_lcpa_mode() {
             buffer_radius, max_threads, max_ram_mb,
             num_neighbours, slope_in_degrees, cost_function,
             cost_modifiers_path, polyline_buffer_radius, cost_raster_path,
-            additional_cost_filename, total_cost_filename, barrier_threshold);
+            additional_cost_filename, total_cost_filename, barrier_threshold,
+            origin_shp_path, destinations_shp_path,
+            slope_limit_enabled, max_slope_up_deg, max_slope_down_deg,
+            want_corridor, corridor_width_percent, corridor_filename);
 
         if (result.success) {
             ConfigLCPA to_save = { dem_path, origin_shp_path, destinations_shp_path, out_dir, cost_modifiers_path, cost_raster_path };
@@ -1593,14 +2054,20 @@ int run_lcpa_mode() {
             std::cout << "  Total path cells: " << result.total_path_cells << "\n";
             std::cout << "  Total cost accumulated: " << std::fixed << std::setprecision(2) << result.total_cost << "\n";
             std::cout << "\nOutput Files:\n";
-            std::cout << "  - " << result.slope_path << "\n";
-            std::cout << "  - " << result.cost_path << " (base cost surface)\n";
-            if (!result.additional_cost_path.empty()) {
+            // A skipped output leaves its path empty: list only what was
+            // actually written, testing each one on its own.
+            if (!result.slope_path.empty())
+                std::cout << "  - " << result.slope_path << "\n";
+            if (!result.cost_path.empty())
+                std::cout << "  - " << result.cost_path << " (base cost surface)\n";
+            if (!result.additional_cost_path.empty())
                 std::cout << "  - " << result.additional_cost_path << " (additional cost multipliers)\n";
+            if (!result.total_cost_path.empty())
                 std::cout << "  - " << result.total_cost_path << " (total cost surface)\n";
-            }
-            std::cout << "  - " << result.path_raster_path << "\n";
-            std::cout << "  - " << result.path_lines_path << "\n";
+            if (!result.path_raster_path.empty())
+                std::cout << "  - " << result.path_raster_path << "\n";
+            if (!result.path_lines_path.empty())
+                std::cout << "  - " << result.path_lines_path << "\n";
         }
 
         print_question("\nRun another LCPA computation? (yes/no)\n"); std::cout << "> ";

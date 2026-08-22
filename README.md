@@ -2,7 +2,7 @@
 
 
 > [!IMPORTANT]
-> - To install the latest version of Trajecta (v1.0.0) [download the installer](https://github.com/ArcheoHacker1501/trajecta/releases/tag/v1.0.0) and click on it once the download is done!
+> - To install the latest version of Trajecta (v1.0.1) [download the installer](https://github.com/ArcheoHacker1501/trajecta/releases/tag/v1.0.1) and click on it once the download is done. Then follow the instructions.
 
 
 Trajecta is a least-cost analysis software specifically developed for users with only a basic computer science background. **Be patient, this software is currently under development and can contain bugs or errors**. Please, contact me for bug reporting, problems during the installation, improvements or additional features you would like to see developed and included in future releases.
@@ -49,6 +49,53 @@ Generation takes two parameters. The **density** is expressed either as a **poin
 
 Points are only placed on cells a path can actually cross, so NoData areas stay empty. The layer is written to the output folder as a shapefile *before* the analysis starts and is then read back as its input: what the run consumed is always on disk, and it appears in the **Viewer** as a selectable overlay. The setup page shows the resulting point count while you type, with a warning above roughly 50,000 points — FETE cost grows with the square of the number of points.
 
+## Batch processing
+
+A batch runs many analyses one after another, unattended. It is organised in two
+levels: a **row** is a single engine run — the smallest thing that can succeed or
+fail on its own — and a **chunk** groups the rows that share an algorithm and a
+set of cost modifiers, which is exactly the pair of settings that is changed
+rarely and would otherwise have to be repeated on every row. The mode, the
+hardware limits and the output folder are fixed for the whole batch.
+
+Rows can be typed in, duplicated, or created in bulk from a folder of DEMs. A
+batch is saved to and loaded from a `.trjbatch` file, so a set of runs can be
+kept or shared. Each row reports its own outcome, and a row that fails does not
+stop the ones after it.
+
+## Auto-save and resume
+
+Long analyses are checkpointed: at a chosen interval the engine writes the state
+of the propagation to disk, and the interface writes alongside it what it would
+need to start the run again. Auto-save is on by default, every thirty minutes.
+
+If Trajecta is closed, interrupted, or stopped by a power cut, the next start
+offers to resume the analysis from its last saved point rather than from the
+beginning; declining deletes the saved state, and there is an option to keep a
+copy of it elsewhere first. A batch resumes at the row it stopped on, with the
+rows already finished left alone. On an analysis that runs for days, this is the
+difference between losing an afternoon and losing the week.
+
+## Comparing a computed route against a known one
+
+The **known-route comparison** measures a computed least-cost path against a
+route that is actually attested — a Roman road, a drover's track, a surveyed
+path. It is what turns a modelled route from an illustration into a claim that
+can be shown to be wrong.
+
+The distances between the two lines are reported as a distribution — median,
+90th percentile and maximum — rather than as a single average, because a route
+may follow the real one closely for nine kilometres and then take the wrong side
+of a hill for one, and a mean hides precisely that. Both directions are
+measured, since a short computed path lying on top of a long known one is close
+in one direction and far in the other; their maximum is the Hausdorff distance,
+the worst disagreement anywhere. Finally, the share of each line running within
+a chosen tolerance of the other answers the question most often actually asked:
+how much of it did the model get right.
+
+Both layers must be projected and in the same coordinate system. Geographic
+coordinates are refused rather than silently reported in meaningless units.
+
 ## Input requirements
 
 Trajecta allows for different types of inputs and file formats:
@@ -81,27 +128,28 @@ Modifiers let you make specific features (water bodies, restricted areas, specif
 **FETE:** the path-density raster, plus the sample points shapefile when the points were generated from the DEM.  
 **LCPA:** the paths raster and the paths polyline shapefile.
 
-## GDAL requirement
+## Finding your way around
 
-The Trajecta engine relies on the **GDAL** geospatial libraries, installed through [OSGeo4W](https://trac.osgeo.org/osgeo4w). Trajecta Studio finds a standard OSGeo4W installation (C:\OSGeo4W or C:\OSGeo4W64) automatically — no manual PATH configuration is needed. If GDAL lives elsewhere, use **Locate GDAL folder** in the sidebar and select your `OSGeo4W\bin` directory. The status is shown at the bottom of the sidebar.
+Trajecta Studio carries a **guided tour** of its own interface: it walks through
+the pages in order, lighting up one control at a time and saying what it does
+and why it is there. It changes nothing that has been set up, and it can be
+started again at any point from the **tutorial** link at the top of the Guide
+page — which is the first thing to try on a new installation.
 
-## References
+The **Viewer** tab displays the results as they are produced: rasters with a
+choice of colour ramps, an optional hillshade, vector overlays, and image
+export. It is meant for checking work as it goes, not for producing final maps.
 
-Irmischer, I. J., & Clarke, K. C. (2017). Measuring and modeling the speed of human navigation. *Cartography and Geographic Information Science*, 45(2), 177–186. [doi:10.1080/15230406.2017.1292150](https://doi.org/10.1080/15230406.2017.1292150)
+## GDAL
 
-Márquez-Pérez, J., Vallejo-Villalta, I., & Álvarez-Francoso, J. I. (2017). Estimated travel time for walking trails in natural areas. *Geografisk Tidsskrift–Danish Journal of Geography*, 117(1), 53–62. [doi:10.1080/00167223.2017.1316212](https://doi.org/10.1080/00167223.2017.1316212)
+The Trajecta engine relies on the **GDAL** geospatial libraries. Since v1.0.0 they are installed together with Trajecta and sit next to the engine: there is nothing to install separately, and no PATH to configure. The status at the bottom of the sidebar should read **GDAL ready** from the first launch.
 
-Park, S. W., Linsen, L., Kreylos, O., Owens, J. D., & Hamann, B. (2006). Discrete Sibson interpolation. *IEEE Transactions on Visualization and Computer Graphics*, 12(2), 243–253. [doi:10.1109/TVCG.2006.27](https://doi.org/10.1109/TVCG.2006.27)
-
-White, D. A. (2015). The Basics of Least Cost Analysis for Archaeological Applications. *Advances in Archaeological Practice*, 3(4), 407–414. [doi:10.7183/2326-3768.3.4.407](https://doi.org/10.7183/2326-3768.3.4.407)
-
-White, D. A., & Barber, S. B. (2012). Geospatial modeling of pedestrian transportation networks: A case study from precolumbian Oaxaca, Mexico. *Journal of Archaeological Science*, 39(8), 2684–2696. [doi:10.1016/j.jas.2012.04.017](https://doi.org/10.1016/j.jas.2012.04.017)
+Trajecta looks beside its own engine before it looks anywhere else, which is what makes this dependable — an installed copy always uses the libraries it shipped with, and cannot be disturbed by any other GDAL on the machine, a QGIS or OSGeo4W install included. If the status is not green the installation is incomplete, or the program was moved by hand rather than installed; reinstalling is the proper remedy, and **Locate GDAL folder** in the sidebar is the stopgap.
 
 ## Currently supported Platforms
 
 - **Windows 10/11**: Supported (CPU only)
 - **Linux**: Experimental (CPU only). Some Windows-specific code paths still need portability updates.
-- **macOS**: CURRENTLY NOT SUPPORTED
 
 ## Citation
 
@@ -119,3 +167,15 @@ GPL-3.0. See `LICENSE` for details.
 
 - GDAL for managing geospatial data I/O
 - Qt6 for the Trajecta Studio graphical interface
+
+## References
+
+Irmischer, I. J., & Clarke, K. C. (2017). Measuring and modeling the speed of human navigation. *Cartography and Geographic Information Science*, 45(2), 177–186. [doi:10.1080/15230406.2017.1292150](https://doi.org/10.1080/15230406.2017.1292150)
+
+Márquez-Pérez, J., Vallejo-Villalta, I., & Álvarez-Francoso, J. I. (2017). Estimated travel time for walking trails in natural areas. *Geografisk Tidsskrift–Danish Journal of Geography*, 117(1), 53–62. [doi:10.1080/00167223.2017.1316212](https://doi.org/10.1080/00167223.2017.1316212)
+
+Park, S. W., Linsen, L., Kreylos, O., Owens, J. D., & Hamann, B. (2006). Discrete Sibson interpolation. *IEEE Transactions on Visualization and Computer Graphics*, 12(2), 243–253. [doi:10.1109/TVCG.2006.27](https://doi.org/10.1109/TVCG.2006.27)
+
+White, D. A. (2015). The Basics of Least Cost Analysis for Archaeological Applications. *Advances in Archaeological Practice*, 3(4), 407–414. [doi:10.7183/2326-3768.3.4.407](https://doi.org/10.7183/2326-3768.3.4.407)
+
+White, D. A., & Barber, S. B. (2012). Geospatial modeling of pedestrian transportation networks: A case study from precolumbian Oaxaca, Mexico. *Journal of Archaeological Science*, 39(8), 2684–2696. [doi:10.1016/j.jas.2012.04.017](https://doi.org/10.1016/j.jas.2012.04.017)

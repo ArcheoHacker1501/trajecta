@@ -11,6 +11,15 @@ ConsoleView::ConsoleView(QWidget *parent)
 {
     setObjectName(QStringLiteral("Console"));
     setReadOnly(true);
+    // A text edit accepts drops so that text can be dropped into it, and it
+    // keeps accepting them when it is read-only: the drop is taken and thrown
+    // away. Since the log is the largest thing on its page, that made a file
+    // dropped anywhere near the middle of the window vanish — Qt stops the
+    // search for a handler at the first widget that accepts drops, whether or
+    // not it does anything. Refusing lets the drop reach the window, which
+    // opens the file in the Viewer. Same reason as MapView, see the note there.
+    setAcceptDrops(false);
+    viewport()->setAcceptDrops(false);
     setWordWrapMode(QTextOption::WrapAnywhere);
     setMaximumBlockCount(8000);  // keep memory bounded on long runs
 

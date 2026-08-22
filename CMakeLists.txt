@@ -64,7 +64,12 @@ if (MSVC)
 endif()
 
 # NOMINMAX prevents windows.h from defining min/max macros that break STL templates
-target_compile_definitions(trajecta PRIVATE NOMINMAX)
+# TRAJECTA_VERSION is stamped into every run manifest, so it is defined here —
+# next to CPACK_PACKAGE_VERSION below — rather than hard-coded in the sources.
+target_compile_definitions(trajecta PRIVATE
+  NOMINMAX
+  TRAJECTA_VERSION="1.0.1"
+)
 
 # Optional: copy GDAL runtime next to the executable (Windows)
 if (WIN32 AND TRAJECTA_COPY_GDAL_RUNTIME)
@@ -183,18 +188,36 @@ endif()
 set(CPACK_PACKAGE_NAME "Trajecta")
 set(CPACK_PACKAGE_VENDOR "Trajecta")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Least-cost path analysis for spatial movement modeling")
-set(CPACK_PACKAGE_VERSION "1.0.0")
+set(CPACK_PACKAGE_VERSION "1.0.1")
 set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/LICENSE")
-set(CPACK_PACKAGE_FILE_NAME "Trajecta-${CPACK_PACKAGE_VERSION}")
+
+# Platform goes in the installer's file name (not just its contents) so that
+# Windows and macOS builds sitting side by side on the same GitHub release —
+# or the same Downloads folder — never collide and are told apart at a
+# glance, without opening either one.
+if (WIN32)
+  set(CPACK_PACKAGE_FILE_NAME "Trajecta-${CPACK_PACKAGE_VERSION}_Windows")
+elseif (APPLE)
+  set(CPACK_PACKAGE_FILE_NAME "Trajecta-${CPACK_PACKAGE_VERSION}_macOS")
+else()
+  set(CPACK_PACKAGE_FILE_NAME "Trajecta-${CPACK_PACKAGE_VERSION}_Linux")
+endif()
 
 if (WIN32)
   set(CPACK_GENERATOR "NSIS")
-  # Version in the visible names, so the user can tell at a glance which build
-  # they have: the Add/Remove Programs entry and the Start Menu group. The
-  # install directory deliberately stays plain "Trajecta" so an upgrade
-  # replaces the previous version instead of accumulating folders.
-  set(CPACK_NSIS_DISPLAY_NAME "Trajecta ${CPACK_PACKAGE_VERSION}")
-  set(CPACK_NSIS_PACKAGE_NAME "Trajecta ${CPACK_PACKAGE_VERSION}")
+  # No version in the Start Menu group or the Add/Remove entry, and none in the
+  # install directory: anything that carries a version number in its *name* goes
+  # stale the moment the next release lands next to it. That is what left a
+  # "Trajecta 1.0.0" group in the Start Menu holding a 1.0.1 shortcut — NSIS
+  # takes this string as the default group, and installing 1.0.1 over 1.0.0
+  # without uninstalling first simply added to the old folder rather than
+  # replacing it.
+  #
+  # The version is still visible where it cannot age: on the shortcut label
+  # (CPACK_PACKAGE_EXECUTABLES below) and in Add/Remove Programs' own Version
+  # column, which CPack fills from CPACK_PACKAGE_VERSION.
+  set(CPACK_NSIS_DISPLAY_NAME "Trajecta")
+  set(CPACK_NSIS_PACKAGE_NAME "Trajecta")
   set(CPACK_PACKAGE_INSTALL_DIRECTORY "Trajecta")
   set(CPACK_NSIS_MODIFY_PATH OFF)
   set(CPACK_NSIS_MUI_ICON "${CMAKE_SOURCE_DIR}/gui/TrajectaStudio/assets/trajecta.ico")
@@ -209,7 +232,13 @@ if (WIN32)
     set(CPACK_CREATE_DESKTOP_LINKS "TrajectaStudio")
     set(CPACK_NSIS_EXECUTABLES_DIRECTORY ".")
     set(CPACK_NSIS_INSTALLED_ICON_NAME "TrajectaStudio.exe")
-    set(CPACK_NSIS_MUI_FINISHPAGE_RUN "TrajectaStudio.exe")
+
+    # "Run Trajecta Studio" on the finish page, launched through Explorer so it
+    # does NOT inherit the installer's elevated token — which is what killed
+    # drag & drop on the first run after every install. CPACK_NSIS_MUI_FINISHPAGE_RUN
+    # is deliberately left unset: the replacement lives in the file below,
+    # because it is the only place the escaping survives. See it for why.
+    set(CPACK_PROJECT_CONFIG_FILE "${CMAKE_SOURCE_DIR}/cmake/CPackNSISFinish.cmake")
   endif()
 else()
   set(CPACK_GENERATOR "TGZ")

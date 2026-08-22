@@ -66,84 +66,22 @@ const char *const kDarkColors[] = {
     "#2f2a17", "#d3a25e", "#1e2733", "#7f9cc4", "#1e2a24", "#7fb08a",
     "#2a2022", "#cf7f7f", "#5c3a3e", "#cf9a9a", "#33262a", "#1e1a1c",
     "#2c2427",
+    // Mode cards, selected: LCPA and batch. FETE keeps the accent, so only two
+    // values are needed. Picked theme by theme to stand well apart from that
+    // theme's accent and from each other — which is the whole point of the
+    // colour — and to carry the same "text on the accent" as the accent does,
+    // so they invert with it on the paper palettes.
+    "#c9905a", "#a58bd0",
 };
 constexpr int kColorCount = int(std::size(kDarkColors));
 
-// --- Daylight: the same design on paper. Text ramp inverted, teal darkened
-// so it carries enough contrast against white. ---
-const char *const kDaylight[kColorCount] = {
-    "#f4f6f8", "#ffffff", "#ffffff", "#f8fafb", "#ffffff", "#f7f9fa",
-    "#eef1f4", "#e4e9ee", "#dae1e8", "#f1f3f5", "#eef1f4", "#e2e7ec",
-    "#dde3e9", "#e2e7ec", "#d8dfe6", "#cdd6de", "#b9c4ce", "#a9b6c2",
-    "#eceff2", "#e8ecef", "#c6ced6",
-    "#10151b", "#1d242c", "#232a32", "#3f4956", "#5b6673", "#6a7481",
-    "#78828e", "#8a939d", "#a3abb4", "#b6bdc4",
-    "#2f7d70", "#3d9182", "#276759", "#205d51", "#1f6a5d", "#17544a",
-    "#e2f0ec", "#d3e8e2", "#ffffff", "#ffffff", "#dfe6e4", "#9bada8",
-    "#fdf3dd", "#8a6318", "#e6eefa", "#33608f", "#e3f3e7", "#2f7a45",
-    "#fbe6e6", "#a63c3c", "#e0b4b4", "#9c3d3d", "#f6d9d9", "#f5eeee",
-    "#e8dcdc",
-};
-
-// --- Nordic: cool blue-grey night with a frost-blue accent. ---
-const char *const kNordic[kColorCount] = {
-    "#232935", "#2a3140", "#2c3444", "#28303e", "#1e2430", "#1b212b",
-    "#343d4e", "#3c4658", "#2b3341", "#272e3a", "#2f3847", "#3a4455",
-    "#3a4355", "#3c4658", "#3f4a5c", "#4a5568", "#56637a", "#5f6d85",
-    "#2c3542", "#303948", "#4a5568",
-    "#eceff4", "#e0e5ee", "#d2d9e4", "#b9c3d3", "#98a4b8", "#8b97ab",
-    "#7d8aa0", "#6d7a90", "#5d6a7e", "#4d5a6c",
-    "#88c0d0", "#9ed2e0", "#6ea6b8", "#5d93a6", "#b3dbe8", "#dcecf2",
-    "#26394a", "#21323f", "#17242e", "#13212b", "#33414f", "#6e8390",
-    "#3c3722", "#ebcb8b", "#2a3648", "#81a1c1", "#2b3a33", "#a3be8c",
-    "#3b2b30", "#bf616a", "#6b4148", "#d08f95", "#46333a", "#2b2226",
-    "#3a2d31",
-};
-
-// --- Ember: warm charcoal with a copper accent. ---
-const char *const kEmber[kColorCount] = {
-    "#1a1613", "#211c18", "#231e1a", "#1f1a16", "#14100e", "#110e0c",
-    "#2c2621", "#332c26", "#241e1a", "#1e1a16", "#262019", "#322b23",
-    "#2f2823", "#322a24", "#372e27", "#45392f", "#52443a", "#5d4d41",
-    "#241f1b", "#2a231e", "#443a31",
-    "#f4ede5", "#e8ded2", "#dbd0c2", "#c2b3a2", "#a3927f", "#94836f",
-    "#857462", "#766553", "#67564a", "#55463c",
-    "#cf8a4f", "#e0a068", "#b3743f", "#9c6435", "#e8b98c", "#f2d5b8",
-    "#33241a", "#2b1e15", "#22170e", "#1e1409", "#3a2c20", "#8a705a",
-    "#3a2c14", "#e6b165", "#1f2733", "#8aa6c9", "#22301f", "#8fbb85",
-    "#331f1d", "#d38080", "#6b3c36", "#d9a08f", "#402723", "#241a17",
-    "#33241f",
-};
-
-// --- Parchment: warm paper, muted sienna accent. ---
-const char *const kParchment[kColorCount] = {
-    "#f3eee3", "#fbf7ee", "#fdfaf3", "#f7f2e7", "#fffdf8", "#f8f4ea",
-    "#eee7d8", "#e5dcc9", "#dcd2bd", "#f2ede2", "#ece5d5", "#e2dac7",
-    "#ded5c2", "#e3dac8", "#d8cfb9", "#cabfa6", "#b8ab8d", "#a89a79",
-    "#ebe5d8", "#e7e0d1", "#c9bda4",
-    "#2b2419", "#3a3225", "#40382a", "#5a5040", "#746955", "#7d7260",
-    "#8a7f6c", "#9a8f7b", "#a89d89", "#b5ab98",
-    "#a05a34", "#b56b42", "#874a2a", "#7a4224", "#8a4b28", "#6f3c20",
-    "#f2e2d6", "#ead5c4", "#fffdf8", "#fffdf8", "#ece2d8", "#b09a8a",
-    "#f8eecd", "#8a6318", "#e6edf6", "#3a5f8a", "#e6f0dc", "#4d7a3a",
-    "#f8e2dc", "#a0442e", "#dcb3a5", "#9a4430", "#f2d8cc", "#f4ece7",
-    "#e8dbd3",
-};
-
-// --- Indigo: deep blue-violet with a lavender accent. ---
-const char *const kIndigo[kColorCount] = {
-    "#16151f", "#1c1b28", "#1e1d2b", "#1a1926", "#111019", "#0e0d15",
-    "#282639", "#302d45", "#211f30", "#1b1a27", "#232135", "#2d2a41",
-    "#2b2940", "#2f2c45", "#332f4b", "#423d5f", "#4e4870", "#5a5380",
-    "#201e2e", "#262336", "#443f63",
-    "#efecfa", "#e0dcf2", "#d0cbe8", "#b7b0d4", "#9a92bd", "#8b83b0",
-    "#7c74a0", "#6d6590", "#5e5780", "#4d476a",
-    "#a091e0", "#b6a8ef", "#8778c4", "#7466ad", "#c3b8f2", "#e2dbfa",
-    "#2a2542", "#241f39", "#17122b", "#140f26", "#322c4c", "#7a739b",
-    "#35301c", "#dcb46e", "#22283f", "#8fa4d6", "#23302b", "#86bd96",
-    "#322230", "#d47f9b", "#633d55", "#d49ab0", "#3c2a3a", "#231a26",
-    "#2f2432",
-};
+// Nordic, Ember, Parchment and Indigo lived here: cool blue-grey, warm
+// copper charcoal, warm paper, and blue-violet, four more turns on the same
+// dark-with-a-map-and-cards design. Withdrawn together to leave the menu
+// short enough to read at a glance — four palettes that each say something
+// the others do not (a working dark theme, a light one, a terminal, an
+// artwork) rather than eight that mostly differed in hue. Daylight had gone
+// the same way earlier, for the same reason relative to Liquid Glass.
 
 QVector<QPair<QString, QString>> buildMap(const char *const *values)
 {
@@ -178,6 +116,7 @@ const char *const kGlass[kColorCount] = {
     "#fff7e6", "#b7791f", "#eef4ff", "#3b6fb5", "#eafaf0", "#2f8f55",
     "#fdeaea", "#c23b3b", "#f0b4b4", "#a83232", "#fce9e9", "#f7f0f0",
     "#f0e2e2",
+    "#c2610a", "#17916b",   // mode cards: LCPA, batch
 };
 
 // --- Neon Circuit: near-black violet with a cyan that does the work of a
@@ -195,6 +134,7 @@ const char *const kCyber[kColorCount] = {
     "#3a2410", "#ffb454", "#16213f", "#6ea8ff", "#0d2e1c", "#4ef08a",
     "#3a0f2a", "#ff3d8b", "#6b1d47", "#ff77b0", "#2c0d20", "#200a18",
     "#2a0c1e",
+    "#ffb454", "#c77dff",   // mode cards: LCPA, batch
 };
 
 // --- Washi: sumi ink on rice paper. Warm off-white surfaces, a text ramp that
@@ -213,14 +153,28 @@ const char *const kWashi[kColorCount] = {
     "#f7edd6", "#8a6a1c", "#e6ecf2", "#3f5f80", "#e6f0e2", "#4a7a42",
     "#f7e3df", "#a83a28", "#d4a396", "#8f3020", "#f2e0db", "#ede2dd",
     "#e8d8d2",
+    // Vermillion accent: both of these stay well away from red.
+    "#4a6b53", "#4a5a8a",   // mode cards: LCPA, batch
 };
 
 // Shape overrides, appended after the colour-mapped sheet. Kept to properties
 // that cannot break a layout — radii, type, spacing, border weight — so a
 // palette can still never move a widget.
 const char *const kGlassQss = R"(
-QMainWindow, QWidget { font-family: "Consolas", monospace; }
+QMainWindow, QWidget { font-family: "Segoe UI"; }
 QFrame#Card { border-radius: 18px; border: 1px solid rgba(255,255,255,0.7); }
+/* The map frame is a card in every way that matters, so it follows the same
+   radius and the same barely-there border — and the walkthrough, which cuts
+   its light in the card's shape, has one number to trust rather than two.
+   Without the border line here it kept the base sheet's #282d36, a visibly
+   stronger line than every other panel on the page. */
+QFrame#CanvasHolder { border-radius: 18px; border: 1px solid rgba(255,255,255,0.7); }
+/* The Guide's pages are cards too — its two widget-based ones (Overview,
+   About) already get the two lines above via #Card, but its document-based
+   ones do not carry that object name, so without this they keep the base
+   sheet's 12px/#282d36 and sit at a visibly different radius with a visibly
+   stronger border right next to pages that used the barely-there Glass one. */
+QTextBrowser#GuideBrowser { border-radius: 18px; border: 1px solid rgba(255,255,255,0.7); }
 QLineEdit, QSpinBox, QDoubleSpinBox, QComboBox { border-radius: 12px; padding: 9px 12px; }
 QPushButton { border-radius: 12px; }
 QPushButton#RunButton, QPushButton#SecondaryRunButton { border-radius: 14px; }
@@ -232,6 +186,11 @@ QToolButton#WindowButton, QToolButton#WindowCloseButton { border-radius: 10px; }
 
 const char *const kCyberQss = R"(
 QFrame#Card { border-radius: 3px; }
+QFrame#CanvasHolder { border-radius: 3px; }
+/* Same reasoning as Glass's matching line: the Guide's document-based pages
+   do not carry the #Card object name, so they need their own copy of this
+   override or they sit at the base sheet's 12px next to the 3px cards. */
+QTextBrowser#GuideBrowser { border-radius: 3px; }
 QLineEdit, QSpinBox, QDoubleSpinBox, QComboBox { border-radius: 2px; }
 QPushButton { border-radius: 2px; letter-spacing: 1px; }
 QPushButton#RunButton, QPushButton#SecondaryRunButton { border-radius: 3px; letter-spacing: 2px; }
@@ -281,6 +240,35 @@ QFrame#Card {
 }
 QTextBrowser#GuideBrowser { background-color: rgba(251, 247, 238, 0.90); }
 
+/* The map canvas is a card too, and on this theme it says so: paper over the
+   artwork rather than the one solid slab on the page. The view inside paints
+   nothing of its own — see MapView, which drops its background brush when the
+   theme asks for this — so what shows through the empty parts of the map is the
+   picture, at the same strength as under every other panel. */
+QFrame#CanvasHolder {
+    background-color: rgba(251, 247, 238, 0.90);
+    border-radius: 12px;
+    border: 1px solid #cec1a7;
+}
+QGraphicsView#ViewerCanvas { background: transparent; }
+
+/* The Guide's two side columns are transparent by default like everything
+   else on this theme, which here means the wave print at full strength
+   right behind the text. The same paper backing every other panel gets
+   fixes it; the dark slate divider line becomes the same warm border
+   Card/CanvasHolder use, since a cool grey line looked stray on paper.
+   Same radius too, so all three panels on the page read as the one shape. */
+QListWidget#GuideSidebar {
+    background-color: rgba(251, 247, 238, 0.90);
+    border-right: 1px solid #cec1a7;
+    border-radius: 12px;
+}
+QFrame#GuideTocPanel {
+    background-color: rgba(251, 247, 238, 0.90);
+    border-left: 1px solid #cec1a7;
+    border-radius: 12px;
+}
+
 QLineEdit, QSpinBox, QDoubleSpinBox, QComboBox { border-radius: 4px; }
 QPushButton { border-radius: 4px; }
 QPushButton#RunButton, QPushButton#SecondaryRunButton { border-radius: 6px; font-weight: 600; }
@@ -298,28 +286,20 @@ const QVector<ThemeManager::Theme> &ThemeManager::themes()
         // index: Midnight is the palette theme.qss is literally written in, and
         // it stays the identity because its map is *empty*, not because of
         // where it sits.
-        t.append({QStringLiteral("glass"), QObject::tr("Light"), true,
+        t.append({QStringLiteral("glass"), QObject::tr("Default"), true,
                   QColor(0x1d, 0x4e, 0xd8), buildMap(kGlass),
                   QString::fromLatin1(kGlassQss)});
         t.append({QStringLiteral("midnight"), QObject::tr("Midnight"), false,
                   QColor(0xd3, 0xa2, 0x5e), {}});
-        t.append({QStringLiteral("daylight"), QObject::tr("Daylight"), true,
-                  QColor(0xa2, 0x62, 0x1b), buildMap(kDaylight)});
-        t.append({QStringLiteral("nordic"), QObject::tr("Nordic"), false,
-                  QColor(0xeb, 0xcb, 0x8b), buildMap(kNordic)});
-        t.append({QStringLiteral("ember"), QObject::tr("Ember"), false,
-                  QColor(0xe0, 0xa0, 0x68), buildMap(kEmber)});
-        t.append({QStringLiteral("parchment"), QObject::tr("Parchment"), true,
-                  QColor(0x8a, 0x4b, 0x28), buildMap(kParchment)});
-        t.append({QStringLiteral("indigo"), QObject::tr("Indigo"), false,
-                  QColor(0xdc, 0xb4, 0x6e), buildMap(kIndigo)});
         // These two also override shape, not just colour (see extraQss).
         t.append({QStringLiteral("cyber"), QObject::tr("Neon Circuit"), false,
                   QColor(0xff, 0x3d, 0x8b), buildMap(kCyber),
                   QString::fromLatin1(kCyberQss)});
+        // The only theme with a picture behind it, and so the only one where a
+        // translucent canvas shows anything: hence the trailing true.
         t.append({QStringLiteral("washi"), QObject::tr("Washi"), true,
                   QColor(0xb8, 0x45, 0x2f), buildMap(kWashi),
-                  QString::fromLatin1(kWashiQss)});
+                  QString::fromLatin1(kWashiQss), true});
         return t;
     }();
     return list;
@@ -359,7 +339,13 @@ int ThemeManager::currentFont()
         if (list.at(i).id == id)
             return i;
     }
-    return 0;
+    // Nothing chosen, or something no longer offered: the platform's neutral
+    // sans, which is entry 1 by construction — the list is built as "Theme
+    // default" followed by that face. Not entry 0: a theme is free to ask for a
+    // face that suits its idea (Liquid Glass asks for a monospace, Washi for a
+    // serif), and that is a fine thing to be able to choose, but it is not what
+    // an interface should look like before anyone has chosen anything.
+    return list.size() > 1 ? 1 : 0;
 }
 
 void ThemeManager::setFont(int index)
@@ -371,9 +357,14 @@ void ThemeManager::setFont(int index)
     apply(current());   // the font is part of the sheet, so rebuild it
 }
 
+// Midnight. The palette in theme.qss is a dark one and every other theme is a
+// colour map laid over it, so the dark theme is the one nothing has to be
+// re-checked against — and this is a program whose users sit in front of a
+// raster for hours. Only for someone who has never chosen: a saved choice wins,
+// which is what the `saved >= 0` test in main() is for.
 int ThemeManager::defaultIndex()
 {
-    const int i = indexOfId(QStringLiteral("glass"));
+    const int i = indexOfId(QStringLiteral("midnight"));
     return i >= 0 ? i : 0;
 }
 
@@ -405,6 +396,20 @@ QColor ThemeManager::mapped(const char *darkHex)
 bool ThemeManager::isLight()
 {
     return theme(g_current).light;
+}
+
+int ThemeManager::cardRadius()
+{
+    // theme.qss says 12; the two themes that restate it in extraQss are the
+    // exceptions. Kept beside them on purpose — if either number is edited up
+    // there, this is the line that has to follow, and a comment in one place is
+    // easier to obey than a rule spread over two files.
+    const QString id = theme(g_current).id;
+    if (id == QLatin1String("glass"))
+        return 18;
+    if (id == QLatin1String("cyber"))
+        return 3;
+    return 12;
 }
 
 void ThemeManager::apply(int index)
@@ -451,7 +456,7 @@ void ThemeManager::apply(int index)
     };
     // Spin-box arrows sit on the accent background, so their glyph has to be
     // the accent's foreground — which every palette defines separately (dark
-    // ink on the dark theme's light teal, white on Daylight's dark teal). A
+    // ink on the dark theme's light teal, paper on Parchment's sienna). A
     // resource SVG carries a baked fill that the colour map above cannot
     // reach, so the two triangles are emitted per theme and the stylesheet
     // points at those instead. Falls back to the bundled greys if the cache

@@ -71,10 +71,22 @@ if (-not $SkipGui) {
     New-Item -ItemType Directory -Force $GuiDeployDir | Out-Null
     Copy-Item "$GuiBuild\TrajectaStudio.exe" $GuiDeployDir
 
+    # windeployqt writes a harmless "Cannot find any version of the
+    # dxcompiler.dll and dxil.dll" warning to stderr on some Qt installs (the
+    # app never needs DirectX shader compilation) — PowerShell's default
+    # ErrorActionPreference of "Stop" turns any stderr write from a native
+    # command into a terminating error, aborting the script over a warning
+    # $LASTEXITCODE below would have ignored anyway. Relaxed to "Continue"
+    # for just this call, which is what actually lets the exit-code check do
+    # its job.
+    $previousEap = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
     & "$QtDir\bin\windeployqt.exe" --release --compiler-runtime --no-translations `
         --no-system-d3d-compiler --no-opengl-sw `
         "$GuiDeployDir\TrajectaStudio.exe"
-    if ($LASTEXITCODE -ne 0) { exit 1 }
+    $windeployExit = $LASTEXITCODE
+    $ErrorActionPreference = $previousEap
+    if ($windeployExit -ne 0) { exit 1 }
 
     Write-Host "GUI deployed to: $GuiDeployDir"
 }

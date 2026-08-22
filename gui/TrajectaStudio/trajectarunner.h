@@ -42,10 +42,15 @@ public:
 
         // Performance
         int maxThreads = 1;
-        int maxRamMb = 4096;
+        int maxRamMb = 8192;
         // 2 MB pages for the engine's per-thread buffers. Opt-in: the engine
         // falls back to normal pages by itself when they are unavailable.
         bool largePages = false;
+
+        // Write a text record of the run next to its results. On by default:
+        // it costs seconds and answers, months later, which DEM and which
+        // settings produced the raster somebody is looking at.
+        bool writeManifest = true;
 
         // Input data
         QString demPath;
@@ -75,13 +80,22 @@ public:
 
         // Algorithm
         int neighbours = 16;           // 8, 16, 24, 32 or 64
-        int costFunction = 1;          // 1 Tobler-White 2015, 2 Marquez-Perez 2017, 3 Irmischer-Clarke 2017
+        // 1 Tobler-White 2015, 2 Marquez-Perez 2017, 3 Irmischer-Clarke 2017,
+        // 4 Herzog 2013 (energy, kJ/kg), 5/6 Campbell 2019 5th/50th percentile
+        int costFunction = 1;
+        // Moves steeper than these are refused outright rather than priced.
+        // Off by default: a limit nobody chose would change every result.
+        bool slopeCutoffEnabled = false;
+        int maxSlopeUpDeg = 30;
+        int maxSlopeDownDeg = 30;
         int smoothingBufferRadius = 0; // cells per side around computed paths
 
         // NNI post-processing (Interp mode only)
         QString interpInputRaster;      // density raster to interpolate
         double interpThreshold = 1.0;   // cells >= threshold become samples
-        int interpSampleSpacing = 4;    // sample every Nth cell (1 = every cell)
+        int interpSampleSpacing = 4;
+        // Also keep each block's maximum, so peaks survive subsampling.
+        bool interpPreservePeaks = false;    // sample every Nth cell (1 = every cell)
         int interpMaxRadius = 0;        // cells, 0 = unlimited
         QString interpOutputName = QStringLiteral("FETE_density_NNI");
 
@@ -93,6 +107,23 @@ public:
         QString densityName = QStringLiteral("FETE_density");    // FETE
         QString pathRasterName = QStringLiteral("raster_lcps");  // LCPA
         QString pathLinesName = QStringLiteral("LCPS_vectors");  // LCPA
+        // Cost corridor, LCPA only. Off by default: it costs an extra
+        // search per destination.
+        bool costCorridor = false;
+        double corridorWidthPercent = 10.0;
+        QString corridorName = QStringLiteral("cost_corridor");
+
+        // Automatic saving of the FETE propagation phase. Off by default and
+        // passed to the engine as environment variables, so a run that does not
+        // want it behaves exactly as it always did.
+        bool checkpointEnabled = false;
+        // Fractional on purpose: the interface only ever offers whole minutes,
+        // but the test harness needs an interval short enough to fire twice in
+        // a run that lasts seconds.
+        double checkpointMinutes = 30.0;
+        QString checkpointDir;   // empty: the engine's own AppData location
+        // Non-empty: resume this checkpoint instead of starting from source 0.
+        QString resumeCheckpoint;
 
         // Environment
         QString exePath;      // full path to trajecta.exe

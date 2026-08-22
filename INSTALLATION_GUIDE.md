@@ -15,7 +15,7 @@ needs is inside it, including the geospatial libraries.
 ## Step 1 — Download and install
 
 1. Go to the [Releases page](https://github.com/ArcheoHacker1501/trajecta/releases).
-2. Download the installer, named `Trajecta-1.0.0.exe`.
+2. Download the installer, named `Trajecta-1.0.1_Windows.exe`.
 3. Double-click it and follow the on-screen instructions.
 4. When it finishes, launch **Trajecta Studio** from the Start Menu or the
    desktop shortcut.
@@ -34,12 +34,21 @@ That is the whole installation.
 Nothing else has to be installed first: no GDAL, no Python, no Visual C++
 redistributable.
 
-### Windows SmartScreen
+### Windows SmartScreen and antivirus warnings
 
 The installer is not code-signed, so on first run Windows may show a blue
 "Windows protected your PC" panel. Click **More info**, then **Run anyway**.
 This is the normal warning for software from an individual developer rather
 than an indication of a problem.
+
+Some antivirus products go further and quarantine the program outright, usually
+with a generic heuristic name such as `IDP.Generic` or `IDP.HELU`. This is a
+false positive with the same single cause: the executables carry no code
+signature, and a freshly built, unsigned binary that opens files and starts a
+subprocess matches what those heuristics look for. If it happens, add the
+installation folder to your antivirus's exclusion list and reinstall. Note that
+some products key the exclusion to the exact path, so moving the folder
+afterwards brings the warning back.
 
 ---
 
@@ -148,3 +157,10 @@ run time is proportional to it.
 **Large memory pages are shown as unavailable.**
 This is an optional performance setting and is off by default; it never changes
 results. See the `?` next to it for how to enable it.
+
+**An analysis was interrupted and I do not want to start it again from zero.**
+You do not have to. Auto-save is on by default, so at the next start Trajecta
+offers to resume the analysis from its last saved point. Accept, and it carries
+on from there. If you decline, the saved state is deleted — but the same prompt
+offers to keep a copy of it in a folder of your choosing first, which can be
+loaded back later from the gear menu.
