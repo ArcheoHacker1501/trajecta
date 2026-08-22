@@ -23,6 +23,22 @@ From-Everywhere-To-Everywhere (FETE) is a GIS-based method initially conceptuali
 
 The density raster generated can then be used in different ways. For example, it can be compared to known routes or settlements in order to assess possible relationships between mobility across a region and settlement patterns.
 
+<table border="0" cellspacing="10" width="100%">
+<tr>
+<td align="center"><img src="gui/TrajectaStudio/assets/guide/Grid_FETE.jpg" width="45%"></td>
+<td align="center"><img src="gui/TrajectaStudio/assets/guide/unfiltered_FETE.jpg" width="45%"></td>
+</tr>
+<tr>
+<td align="center"><i>Example of regular point grid and SRTM 30m DEM used as input for FETE computation.</i></td>
+<td align="center"><i>Unfiltered FETE raster resulting from computation with Trajecta.</i></td>
+</tr>
+</table>
+
+<table border="0" cellspacing="10" width="100%">
+<tr><td align="center"><img src="gui/TrajectaStudio/assets/guide/filtered_FETE.jpg" width="90%"></td></tr>
+<tr><td align="center"><i>Filtered FETE raster using only top 20% results.</i></td></tr>
+</table>
+
 ## Sample points
 
 In FETE mode the sample points can either be **imported from a file** (e.g. .shp, .geojson, .csv), or **directly generated from the DEM**.
@@ -76,13 +92,13 @@ Every cost function in Trajecta is applied **to a single move between two cell
 centres**, not to a cell in isolation. For each move the engine computes:
 
 <table>
-<tr><td>`dh`</td><td>horizontal distance between the two cell centres, in metres —
+<tr><td><code>dh</code></td><td>horizontal distance between the two cell centres, in metres —
 from the neighbour offset and the DEM cell size, so a diagonal move is longer than an
 orthogonal one</td></tr>
-<tr><td>`dz`</td><td>elevation difference, `z(to) − z(from)`, in metres —
-**signed**: positive uphill, negative downhill</td></tr>
-<tr><td>`S`</td><td>the slope of that move, `S = dz / dh` (a tangent, not an angle).
-Where a formula below uses a percentage the engine passes `S × 100`</td></tr>
+<tr><td><code>dz</code></td><td>elevation difference, <code>z(to) − z(from)</code>, in metres —
+<b>signed</b>: positive uphill, negative downhill</td></tr>
+<tr><td><code>S</code></td><td>the slope of that move, <code>S = dz / dh</code> (a tangent, not an angle).
+Where a formula below uses a percentage the engine passes <code>S × 100</code></td></tr>
 </table>
 
 The cost function converts `S` into a walking speed `v`, and the cost of
@@ -204,16 +220,16 @@ inventing one.
 
 <table border="1" cellspacing="0">
 <tr><th>Quantity</th><th>Unit</th><th>Notes</th></tr>
-<tr><td>DEM elevation `z`</td><td>metres</td><td>assumed; a DEM in feet gives slopes too small by 3.28×</td></tr>
-<tr><td>Cell size, `dh`</td><td>metres</td><td>taken from the DEM geotransform, so the CRS must be **projected**, never geographic degrees</td></tr>
-<tr><td>Slope `S`</td><td>dimensionless (m/m)</td><td>a tangent. `S = 1` is 45°, not 100°</td></tr>
-<tr><td>Slope raster output</td><td>**degrees** or **percent**</td><td>degrees with Tobler and Campbell, percent with the others; stated in the run summary and in the manifest. This affects the *exported raster only* — the cost functions always receive `S = dz/dh`</td></tr>
-<tr><td>Speed `v`</td><td>km/h (1–2), m/s (3, 5, 6)</td><td>converted internally; the m/s functions are multiplied by 3.6</td></tr>
-<tr><td>Cost of one move</td><td>**hours**, except Herzog: **kJ/kg**</td><td>printed in every run summary and written into the manifest as *cost units*</td></tr>
+<tr><td>DEM elevation <code>z</code></td><td>metres</td><td>assumed; a DEM in feet gives slopes too small by 3.28×</td></tr>
+<tr><td>Cell size, <code>dh</code></td><td>metres</td><td>taken from the DEM geotransform, so the CRS must be <b>projected</b>, never geographic degrees</td></tr>
+<tr><td>Slope <code>S</code></td><td>dimensionless (m/m)</td><td>a tangent. <code>S = 1</code> is 45°, not 100°</td></tr>
+<tr><td>Slope raster output</td><td><b>degrees</b> or <b>percent</b></td><td>degrees with Tobler and Campbell, percent with the others; stated in the run summary and in the manifest. This affects the <i>exported raster only</i> — the cost functions always receive <code>S = dz/dh</code></td></tr>
+<tr><td>Speed <code>v</code></td><td>km/h (1–2), m/s (3, 5, 6)</td><td>converted internally; the m/s functions are multiplied by 3.6</td></tr>
+<tr><td>Cost of one move</td><td><b>hours</b>, except Herzog: <b>kJ/kg</b></td><td>printed in every run summary and written into the manifest as <i>cost units</i></td></tr>
 <tr><td>Base / additional / total cost surface</td><td>same as the move</td><td>mean over the neighbours of a cell — a summary, not what the search uses</td></tr>
 <tr><td>Accumulated cost (internal)</td><td>same as the move</td><td>sum of move costs along the cheapest route found</td></tr>
-<tr><td>FETE density raster</td><td>**count** of paths</td><td>a pure integer count, not a cost and not a time</td></tr>
-<tr><td>Cost modifiers</td><td>**dimensionless multiplier**</td><td>multiplies the base cost, so 2.0 means "twice as slow here"</td></tr>
+<tr><td>FETE density raster</td><td><b>count</b> of paths</td><td>a pure integer count, not a cost and not a time</td></tr>
+<tr><td>Cost modifiers</td><td><b>dimensionless multiplier</b></td><td>multiplies the base cost, so 2.0 means "twice as slow here"</td></tr>
 </table>
 
 The five time-based functions return hours, so their cost surfaces are **numerically
@@ -233,13 +249,13 @@ when accumulating results. This function allows to calculate wider paths, thus m
 
 <table border="0" cellspacing="0">
 <tr><th align="left">Input</th><th align="left">Requirements</th></tr>
-<tr><td>**DEM**</td><td>GeoTIFF (.tif/.tiff), georeferenced, with a CRS.</td></tr>
-<tr><td>**Sample points**</td><td>.shp, .geojson/.json, .kml, .gml/.xml or .csv
+<tr><td><b>DEM</b></td><td>GeoTIFF (.tif/.tiff), georeferenced, with a CRS.</td></tr>
+<tr><td><b>Sample points</b></td><td>.shp, .geojson/.json, .kml, .gml/.xml or .csv
     (coordinate columns named x/y, lon/lat or easting/northing) if imported; or
     generated directly from the DEM instead.</td></tr>
-<tr><td>**Vector modifiers** (optional)</td><td>Polylines with a float **cost** field
+<tr><td><b>Vector modifiers</b> (optional)</td><td>Polylines with a float <b>cost</b> field
     holding the multiplier; for .csv the geometry must be in a WKT column.</td></tr>
-<tr><td>**Raster modifiers** (optional)</td><td>GeoTIFF with the same dimensions as the DEM;
+<tr><td><b>Raster modifiers</b> (optional)</td><td>GeoTIFF with the same dimensions as the DEM;
     cell values are multipliers (1.0 = unchanged, 2.0 = double cost).</td></tr>
 </table>
 
@@ -262,6 +278,12 @@ Algorithmically, the raster surface is treated as a weighted graph (cells as nod
 In archaeology, LCPA is widely used to reconstruct probable movement corridors, ancient route networks, or trade paths from digital elevation models, on the assumption that human movement tends to minimize effort. It should nonetheless be used cautiously when investigating ancient routes: LCPA inherently introduces a strong selection bias as it necessarily needs the user to select at least two points (one origin and at least one destination) to be connected. Importantly, the two points might have never been actually connected in ancient times. Consequently, this selection bias must always be taken into account and additional proofing of the results should be always provided.
 
 To compute LCPs in Trajecta, DEM or other elevation based data can be used to calculate slope which can then be transformed using different cost functions (e.g. Modified Tobler's Hiking Function, Irmischer and Clarke 2017, Herzog 2013). Additional costs can be added as for waterbodies or terrain indexes using raster or vector input layers.
+
+<table border="0" cellspacing="10" width="100%">
+<tr><td align="center"><img src="gui/TrajectaStudio/assets/guide/LCPA.jpg" width="90%"></td></tr>
+<tr><td align="center"><i>Least-Cost Paths from single origin to multiple destinations calculated using
+Trajecta and SRTM 30m DEM.</i></td></tr>
+</table>
 
 ## Cost modifiers
 
@@ -296,13 +318,13 @@ Every cost function in Trajecta is applied **to a single move between two cell
 centres**, not to a cell in isolation. For each move the engine computes:
 
 <table>
-<tr><td>`dh`</td><td>horizontal distance between the two cell centres, in metres —
+<tr><td><code>dh</code></td><td>horizontal distance between the two cell centres, in metres —
 from the neighbour offset and the DEM cell size, so a diagonal move is longer than an
 orthogonal one</td></tr>
-<tr><td>`dz`</td><td>elevation difference, `z(to) − z(from)`, in metres —
-**signed**: positive uphill, negative downhill</td></tr>
-<tr><td>`S`</td><td>the slope of that move, `S = dz / dh` (a tangent, not an angle).
-Where a formula below uses a percentage the engine passes `S × 100`</td></tr>
+<tr><td><code>dz</code></td><td>elevation difference, <code>z(to) − z(from)</code>, in metres —
+<b>signed</b>: positive uphill, negative downhill</td></tr>
+<tr><td><code>S</code></td><td>the slope of that move, <code>S = dz / dh</code> (a tangent, not an angle).
+Where a formula below uses a percentage the engine passes <code>S × 100</code></td></tr>
 </table>
 
 The cost function converts `S` into a walking speed `v`, and the cost of
@@ -424,16 +446,16 @@ inventing one.
 
 <table border="1" cellspacing="0">
 <tr><th>Quantity</th><th>Unit</th><th>Notes</th></tr>
-<tr><td>DEM elevation `z`</td><td>metres</td><td>assumed; a DEM in feet gives slopes too small by 3.28×</td></tr>
-<tr><td>Cell size, `dh`</td><td>metres</td><td>taken from the DEM geotransform, so the CRS must be **projected**, never geographic degrees</td></tr>
-<tr><td>Slope `S`</td><td>dimensionless (m/m)</td><td>a tangent. `S = 1` is 45°, not 100°</td></tr>
-<tr><td>Slope raster output</td><td>**degrees** or **percent**</td><td>degrees with Tobler and Campbell, percent with the others; stated in the run summary and in the manifest. This affects the *exported raster only* — the cost functions always receive `S = dz/dh`</td></tr>
-<tr><td>Speed `v`</td><td>km/h (1–2), m/s (3, 5, 6)</td><td>converted internally; the m/s functions are multiplied by 3.6</td></tr>
-<tr><td>Cost of one move</td><td>**hours**, except Herzog: **kJ/kg**</td><td>printed in every run summary and written into the manifest as *cost units*</td></tr>
+<tr><td>DEM elevation <code>z</code></td><td>metres</td><td>assumed; a DEM in feet gives slopes too small by 3.28×</td></tr>
+<tr><td>Cell size, <code>dh</code></td><td>metres</td><td>taken from the DEM geotransform, so the CRS must be <b>projected</b>, never geographic degrees</td></tr>
+<tr><td>Slope <code>S</code></td><td>dimensionless (m/m)</td><td>a tangent. <code>S = 1</code> is 45°, not 100°</td></tr>
+<tr><td>Slope raster output</td><td><b>degrees</b> or <b>percent</b></td><td>degrees with Tobler and Campbell, percent with the others; stated in the run summary and in the manifest. This affects the <i>exported raster only</i> — the cost functions always receive <code>S = dz/dh</code></td></tr>
+<tr><td>Speed <code>v</code></td><td>km/h (1–2), m/s (3, 5, 6)</td><td>converted internally; the m/s functions are multiplied by 3.6</td></tr>
+<tr><td>Cost of one move</td><td><b>hours</b>, except Herzog: <b>kJ/kg</b></td><td>printed in every run summary and written into the manifest as <i>cost units</i></td></tr>
 <tr><td>Base / additional / total cost surface</td><td>same as the move</td><td>mean over the neighbours of a cell — a summary, not what the search uses</td></tr>
 <tr><td>Accumulated cost (internal)</td><td>same as the move</td><td>sum of move costs along the cheapest route found</td></tr>
-<tr><td>FETE density raster</td><td>**count** of paths</td><td>a pure integer count, not a cost and not a time</td></tr>
-<tr><td>Cost modifiers</td><td>**dimensionless multiplier**</td><td>multiplies the base cost, so 2.0 means "twice as slow here"</td></tr>
+<tr><td>FETE density raster</td><td><b>count</b> of paths</td><td>a pure integer count, not a cost and not a time</td></tr>
+<tr><td>Cost modifiers</td><td><b>dimensionless multiplier</b></td><td>multiplies the base cost, so 2.0 means "twice as slow here"</td></tr>
 </table>
 
 The five time-based functions return hours, so their cost surfaces are **numerically
@@ -453,14 +475,14 @@ when accumulating results. This function allows to calculate wider paths, thus m
 
 <table border="0" cellspacing="0">
 <tr><th align="left">Input</th><th align="left">Requirements</th></tr>
-<tr><td>**DEM**</td><td>GeoTIFF (.tif/.tiff), georeferenced, with a CRS.</td></tr>
-<tr><td>**Origin**</td><td>Vector file with exactly one point (.shp, .geojson/.json,
+<tr><td><b>DEM</b></td><td>GeoTIFF (.tif/.tiff), georeferenced, with a CRS.</td></tr>
+<tr><td><b>Origin</b></td><td>Vector file with exactly one point (.shp, .geojson/.json,
     .kml, .gml/.xml or .csv): the starting location of the least-cost routes.</td></tr>
-<tr><td>**Destinations**</td><td>Vector file with one or more points, same formats: the
+<tr><td><b>Destinations</b></td><td>Vector file with one or more points, same formats: the
     target(s) the optimal route(s) is/are computed to.</td></tr>
-<tr><td>**Vector modifiers** (optional)</td><td>Polylines with a float **cost** field
+<tr><td><b>Vector modifiers</b> (optional)</td><td>Polylines with a float <b>cost</b> field
     holding the multiplier; for .csv the geometry must be in a WKT column.</td></tr>
-<tr><td>**Raster modifiers** (optional)</td><td>GeoTIFF with the same dimensions as the DEM;
+<tr><td><b>Raster modifiers</b> (optional)</td><td>GeoTIFF with the same dimensions as the DEM;
     cell values are multipliers (1.0 = unchanged, 2.0 = double cost).</td></tr>
 </table>
 
@@ -485,6 +507,17 @@ Sample values are preserved exactly. The optional **max search radius** caps
 how far the interpolation reaches into empty areas (beyond it, cells take the
 value of their nearest sample), which keeps large rasters fast. After a
 successful FETE run the density raster is filled in automatically, allowing for direct post-processing.
+
+<table border="0" cellspacing="10" width="100%">
+<tr>
+<td align="center"><img src="gui/TrajectaStudio/assets/guide/FETE_density.jpg" width="45%"></td>
+<td align="center"><img src="gui/TrajectaStudio/assets/guide/FETE_density_NNI.jpg" width="45%"></td>
+</tr>
+<tr>
+<td align="center"><i>FETE density raster generated with Trajecta.</i></td>
+<td align="center"><i>The same FETE density raster after NNI.</i></td>
+</tr>
+</table>
 
 ## Input requirements
 
