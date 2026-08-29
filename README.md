@@ -125,24 +125,11 @@ installed together with Trajecta and sit next to the engine, so there is nothing
 to install separately and no PATH to configure. The status at the bottom of the
 sidebar should read **GDAL ready** from the first launch.
 
-Trajecta looks beside its own engine before it looks anywhere else, which is
-what makes this dependable: an installed copy always uses the libraries it
-shipped with, and cannot be disturbed by any other GDAL on the machine — a QGIS
-or OSGeo4W install included, whether it is updated, moved or removed.
-
-If the status is not green, the installation is incomplete or the program has
-been moved by hand rather than installed. Reinstalling is the proper remedy; as
-a stopgap, **Locate GDAL folder** in the sidebar accepts any folder holding
-`gdal*.dll`.
-
 ## Qt6
 
 [**Qt6**](https://www.qt.io/product/qt6/qml-book/ch17-qtcpp-qtcpp) is the cross-platform application framework Trajecta Studio's
 entire graphical interface is built with — every window, button and widget in
-the program, including this Guide, is drawn by it. It is a separate, independent
-project from GDAL: Qt draws and runs the interface, GDAL reads and writes the
-geospatial data behind it. Trajecta bundles the Qt libraries it needs, the same
-way it bundles GDAL, so nothing has to be installed separately for either.
+the program.
 
 # References
 
