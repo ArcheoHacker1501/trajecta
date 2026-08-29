@@ -6,7 +6,7 @@
 **Trajecta** is a free, open-source least-cost analysis (LCA) software distributed under the GNU General Public License 3.0. It is shipped along with **Trajecta Studio**, a fully customized GUI (Graphic User Interface) specifically developed to provide a seamless and user-friendly experience to every type of user, even without prior experience. Trajecta and Trajecta Studio are primarily designed to be used by archaeologists, historians, geographers, and other researchers who need to model movement across landscapes to investigate spatial patterns.
 
 
-At its core, Trajecta models movement across a landscape using **FETE** (From-Everywhere-To-Everywhere) and **LCPA** (Least-Cost Path Analysis) analyses. It also refines and checks the result with **NNI (Natural Neighbour Interpolation)** and the **route comparison tool**, and tests it against real settlement patterns with the **site-corridor coherence tool**. Finally, the built-in **Viewer** offers a simple platform to visualize the results of the computations directly in the Trajecta app.
+At its core, Trajecta models movement across a landscape using **FETE** (From-Everywhere-To-Everywhere) and **LCPA** (Least-Cost Path Analysis) analyses. It also refines and checks the result with **NNI** (Natural Neighbour Interpolation) and the **route comparison tool**, and tests it against real settlement patterns with the **site-corridor coherence tool**. Finally, the built-in **Viewer** offers a simple platform to visualize the results of the computations directly in the Trajecta app.
 
 Detailed descriptions of all features implemented in Trajecta are available directly in the app in the dedicated **Guide** section. 
 
