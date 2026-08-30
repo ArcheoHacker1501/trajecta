@@ -21,7 +21,7 @@ From-Everywhere-To-Everywhere (FETE) is a GIS-based method initially conceptuali
 
 To compute all these LCPs, DEM or other elevation based data can be used to calculate slope which can then be transformed using cost functions (e.g. Tobler's Hiking Function). Additional costs can be added as for waterbodies or different types of terrain via raster or vector inputs.
 
-The density raster generated can then be used in different ways and further analyzed using the different tools implemented in Trajecta Studio. For example, it can be compared to known routes or settlements in order to assess possible relationships between mobility across a region and settlement patterns.
+The density raster generated can then be used in different ways and further analyzed using the different tools implemented in Trajecta Studio. For example, it can be compared to known routes or settlement locations in order to assess possible relationships between mobility across a region and settlement patterns.
 
 <table border="0" cellspacing="10" width="100%">
 <tr>
