@@ -10,8 +10,6 @@ At its core, Trajecta models movement across a landscape using **FETE** (From-Ev
 
 Detailed descriptions of all features implemented in Trajecta are available directly in the app in the dedicated **Guide** section. 
 
-Importantly, Trajecta was inspired and made possible thanks to the previous work of many scholars from different fields. All the references and sources used to develop Trajecta are listed under **References**.
-
 > [!IMPORTANT]
 > Be patient, this software is currently under development and can contain bugs or errors! For bug reporting, problems during the installation, or to suggest improvements or additional features to be included in Trajecta, please contact me or use the in-app **report form**.
 
