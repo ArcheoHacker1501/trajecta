@@ -53,9 +53,9 @@ Trajecta and SRTM 30m DEM.</i></td></tr>
 
 # Post-processing: NNI — Natural Neighbour Interpolation
 
-The **Post-processing** page turns a FETE density raster into a smooth,
-continuous surface using **discrete Sibson (natural neighbour) interpolation
-(Sibson 1981; Park et al. 2006)**. 
+Trajecta implements different post-processing tools. One of these is **discrete Sibson interpolation**
+(Natural Neighbour Interpolation - NNI), which turns FETE density raster into a smooth,
+continuous surface (Sibson 1981; Park et al. 2006). 
 Cells at or above the **sample threshold** act as sample points; every other
 cell receives the average of the samples whose influence area it would claim.
 Sample values are preserved exactly. The optional **max search radius** caps
@@ -82,13 +82,9 @@ The tool generates a short report. The report gives, in both directions, the med
 
 # Post-processing: site-corridor coherence analysis
 
-The third tool asks the question the FETE was computed for: **do the sites sit on the
-movement the surface predicts?** It takes the FETE surface and a **point layer of
-sites**, and gives every site a score, the sample a verdict, and — this is the part that
-makes two periods comparable — a statement of how much of that could have happened by
-chance.
+The site-corridor coherence analysis tool allows to understand if and to what extent there could be a coherence between the modelled mobility map of a region and the settlement patterns in that same region. In particular, the core question it wants to answer is weather one or more known sites sit or not on the high-traffic corridors identified through FETE analysis. 
 
-In simple terms, the site-corridor coherence tool aims at answering four main questions:
+To answer this question, the tool takes in two inputs: **the FETE surface and a point layer containing the settlement locations**. The tool then gives both the entire sample and each individual site different scores. In simple terms, each score aims at answering one of four main questions:
 
 1. **Are any of the sites near a corridor at all?** If almost none is, everything below is
 noise and you can stop your analysis here.
