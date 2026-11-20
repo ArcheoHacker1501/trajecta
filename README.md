@@ -11,7 +11,7 @@ At its core, Trajecta models movement across a landscape using **FETE** (From-Ev
 Detailed descriptions of all features implemented in Trajecta are available directly in the app in the dedicated **Guide** section. 
 
 > [!IMPORTANT]
-> Be patient, **this software is currently under development and can contain bugs or errors!** For bug reporting, problems during the installation, or to suggest improvements or additional features to be included in Trajecta, please contact me **via email** (trajectastudio@gmail.com) or use the in-app **report form**.
+> Be patient, **this software is currently under development and can contain bugs or errors!** For bug reporting, problems during the installation, or to suggest improvements or additional features to be included in Trajecta, please contact me **via email** (trajectastudio@gmail.com) or use the **in-app report form**.
 
 # Processing: FETE — From-Everywhere-To-Everywhere
 
